@@ -44,6 +44,10 @@ const messageSchema = new mongoose.Schema({
     type:Boolean,
     default: false
   },
+  reply: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Message', // Reference to the original message
+  },
   status: {
     type: {
       state: {

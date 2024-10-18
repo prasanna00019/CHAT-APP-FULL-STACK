@@ -43,3 +43,39 @@
 .read-the-docs {
   color: #888;
 }
+.highlight {
+  background-color: yellow;
+  transition: background-color 0.5s ease;
+}
+.scroll-to-bottom-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.scroll-to-bottom-button:hover {
+  background-color: #0056b3;
+}
+.highlight {
+  background-color: yellow;
+  font-weight: bold;
+}
+.highlight {
+  background-color: yellow;
+  font-weight: bold;
+}
+
+.search-result {
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}

@@ -16,8 +16,7 @@ import star_filled from '../assets/starred.png';
 import star_empty from '../assets/star_empty.png';
 import toast, { Toaster } from 'react-hot-toast';
 import useSendMessage from '../hooks/useSendMessage';
-import tickdelivered from '../assets/tick-delivered.png';
-import tickread from '../assets/tick-read.png';
+import reply from '../assets/reply.png'
 import info from '../assets/information.png';
 import { useStatusContext } from '../context/StatusContext';
 const RightMessage = () => {
@@ -31,18 +30,86 @@ const RightMessage = () => {
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null); // State to track the message being edited
   const [editedText, setEditedText] = useState(''); // State to store edited text
-  const [editClick,setEditClick] = useState(false);
+  // const [editClick,setEditClick] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
   const [reactionOptions,setReactionOptions]=useState(null);
   const [messageInfo, setMessageInfo] = useState({ deliveredTime: null, readTime: null });
   const {userInfo, setUserInfo} = useStatusContext();
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const chatContainerRef = useRef(null); // Reference for the chat container
   const [readStatus, setReadStatus] = useState({}); // Track read status
   const messageRefs = useRef([]); // References to message elements
   const [pinned,setPinned]=useState(false);
   const [starred, setStarred]=useState(false)
   const [isTyping, setIsTyping] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+const [searchResults, setSearchResults] = useState([]);
   const typingTimeout = useRef(null);
   const { onlineStatus, setOnlineStatus, updatedStatus, setUpdatedStatus}=useStatusContext()
   const{ socket,sendMessageSocket ,socketId,registerUser}= useContext(SocketContext);
+  useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+  
+      // If the user is not at the bottom, show the button
+      if (scrollHeight - scrollTop > clientHeight + 100) {
+        setIsScrolledUp(true);
+      } else {
+        setIsScrolledUp(false);
+      }
+    };
+  
+    const chatContainer = chatContainerRef.current;
+    chatContainer.addEventListener('scroll', handleScroll);
+  
+    // Cleanup the event listener on component unmount
+    return () => {
+      chatContainer.removeEventListener('scroll', handleScroll);
+    };
+  }, [clickedId]);
+  const scrollToBottom = () => {
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
+  useEffect(()=>{
+    if(searchTerm===""){
+      setSearchResults([]);
+    }
+  },[searchTerm])
+  const handleSearch = async () => {
+    const conversationId='671000e4fd882638d545ef7e';
+    try {
+      const response = await fetch("http://localhost:5000/message/search/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+       
+        body: JSON.stringify({ conversationId, searchTerm }),
+      });
+      
+      const data = await response.json();
+      setSearchResults(data);
+      // console.log(searchResults,"search results");
+    } catch (error) {
+      console.error("Error searching messages:", error);
+    }
+  };
+  const highlightText = (text, term) => {
+    if (!term) return text;
+    const regex = new RegExp(`(${term})`, "gi");
+    return text.split(regex).map((part, index) =>
+      part.toLowerCase() === term.toLowerCase() ? (
+        <span key={index} className="highlight">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
   useEffect(() => {
     socket.on('receive_message', ({ message ,senderId}) => {
       console.log('right message received componnt:');
@@ -88,24 +155,27 @@ const RightMessage = () => {
         entries.forEach(async (entry) => {
           if (entry.isIntersecting) {
             const messageId = entry.target.getAttribute('data-message-id');
+            
             try {
               // Fetch the senderId from the original API endpoint
-              const res = await fetch(`http://localhost:5000/message/get-senderId-from-messageId/${messageId}`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              });
+               
+              // const res = await fetch(`http://localhost:5000/message/get-senderId-from-messageId/${messageId}`, {
+              //   method: 'GET',
+              //   headers: {
+              //     'Content-Type': 'application/json',
+              //   },
+              // });
   
-              if (!res.ok) {
-                throw new Error('Failed to retrieve senderId');
-              }
+              // if (!res.ok) {
+              //   throw new Error('Failed to retrieve senderId');
+              // }
   
-              const data = await res.json();
-              const senderId = data.sender;
-  
+              // const data = await res.json();
+              const senderId = entry.target.getAttribute('data-message-sender');
+            //  console.log('senderId:', senderId);
               // Only update if not already marked as read and sender is not the authenticated user
               if (!readStatus[messageId] && senderId !== Authuser._id) {
+                // console.log('right message received componnt:');
                 // Make the API call to mark the message as read
                 await fetch(`http://localhost:5000/message/Message-read/${messageId}`, {
                   method: 'PUT',
@@ -148,15 +218,54 @@ const RightMessage = () => {
     registerUser(userId);
     console.log(clickedId,Authuser._id," RIGHT MESSAGE.JSX")
   }
-  },[clickedId,Authuser]) 
+  },[clickedId,Authuser])
+  const renderSearchResults = () => {
+    if (searchResults.length === 0) {
+      return <p>No results found</p>;
+    }
+  
+    return searchResults.map((result) => (
+      <div key={result._id} className="search-result" onClick={()=>scrollToMessage(result._id)} >
+        <p>
+          <strong>Sender:</strong> {result.sender} <br />
+          <strong>Text:</strong> {highlightText(result.text, searchTerm)} <br />
+          <strong>Sent At:</strong> {new Date(result.sentAt).toLocaleString()} <br />
+          <strong>Status:</strong> {result.status.state} <br />
+        </p>
+      </div>
+    ));
+  };
+  const renderReply = (replyId) => {
+    const originalMessage = messages.find((msg) => msg._id === replyId);
+    const sender = originalMessage?.sender;
+    return originalMessage ? (
+      <div onClick={()=>scrollToMessage(replyId)} className="reply-content border border-black rounded-lg  border-x-green-600 border-x-8 bg-white">
+        <blockquote>{sender === Authuser._id ? 'YOU':userInfo.username}:{originalMessage.text}</blockquote>
+      </div>
+    ) : (
+      <div className="reply-content">
+        <blockquote>This message was deleted or no longer available.</blockquote>
+      </div>
+    );
+  };
+  const handleReplyClick = (messageId) => {
+    console.log(messageId, " messaged if ");
+    setReplyingTo(replyingTo === messageId ? null : messageId);
+    console.log(replyingTo, " replying to");
+  };
+  // Function to cancel the reply
+  const cancelReply = () => {
+    setReplyingTo(null);
+  }; 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message) return;
     try {
       sendMessageSocket(receiverId, message);  // Send message over socket
       setMessages((prev) => [...prev, { sender: Authuser._id,sentAt: new Date(), text: message }]); // Update UI with the new message
-      sendMessage(message);                      // Save message in the backend
+      sendMessage(message,replyingTo);                      // Save message in the backend
       setMessage(""); // Clear the input field only after sending
+      setReplyingTo(null);
     } catch (error) {
       console.error("Error sending message:", error);
       // Optionally show an error message to the user
@@ -192,6 +301,7 @@ const RightMessage = () => {
         .catch((error) => console.error("Error fetching messages:", error));
     }
   }, [Authuser,socket,clickedId,messages]);
+  
   const customTheme={
     fontSize: '18px', // font size
 fontWeight: 'bold', // font weight
@@ -307,7 +417,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
   };
   // Function to submit edited message
   const handleSubmitEdit = async (messageId) => {
-    setEditClick(true);
+    // setEditClick(true);
     const res = await fetch(`http://localhost:5000/message/edit/${messageId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -403,18 +513,21 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
          });   
       }
     }
-    const formatText = (tag) => {
-      const startTag = tag === 'bold' ? '**' : tag === 'italic' ? '*' : '~~';
-      const endTag = startTag;
+    const scrollToMessage = (messageId) => {
+      // Find the index of the message with the given messageId
+      const index = messages.findIndex((msg) => msg._id === messageId);
+      
+      // If the index is found and a corresponding reference exists
+      if (index !== -1 && messageRefs.current[index]) {
+        messageRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
     
-      if (window.getSelection) {
-        const selectedText = window.getSelection().toString();
-        if (selectedText) {
-          const formattedText = `${startTag}${selectedText}${endTag}`;
-          setMessage(message.replace(selectedText, formattedText));
-        }
+        // Optionally, add a visual highlight to indicate focus
+        messageRefs.current[index].classList.add('highlight');
+        setTimeout(() => {
+          messageRefs.current[index].classList.remove('highlight');
+        }, 2000); // Remove the highlight after 2 seconds
       }
-    };
+    };    
     const toggleReactions =(messageId)=>{
       setReactionOptions(reactionOptions === messageId ? null : messageId);
     }
@@ -438,24 +551,45 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
               </p>
             {/* {console.log(userInfo.ShowLastSeen, userInfo.lastSeen)} */}
             </div>
+            <div className="search-bar">
+  <input
+    type="text"
+    placeholder="Search messages..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+  />
+  <button onClick={handleSearch}>Search</button>
+</div>
             <img src={dots} alt="" height={20} width={50} />
           </div>
         ) : (
           <p className='font-bold '>WELCOME TO CHAT APP, CLICK HERE ON ANY USER TO BEGIN CHATTING</p>
         )}
-        <div className='h-[85%] mt-3 w-full border border-gray-300 overflow-y-scroll'>
+        <div className='h-[85%] mt-3 w-full border border-gray-300 overflow-y-scroll' ref={chatContainerRef} >
           <div className="messages-container">
+          {isScrolledUp && (
+      <button
+        className="scroll-to-bottom-button"
+        onClick={scrollToBottom}
+      >
+        Scroll to Bottom
+      </button>
+    )}
+      <div className="search-results">
+      {searchTerm && renderSearchResults()}
+    </div>
             {messages.map((message,index) => (
               <div
                 key={message._id} // Assuming message.id is available
                 ref={(el)=>(messageRefs.current[index] = el)}
-                data-message-id={message._id}
+                data-message-id={message._id} data-message-sender={message.sender}
                 className={`message-item ${message.sender === Authuser._id ? 'ml-[300px]' : 'mr-[600px]'} ${message.sender === Authuser._id ? 'bg-zinc-100' : 'bg-blue-200'} rounded-md mb-2 w-[60%]`}
               >
+                                            {message.reply && renderReply(message.reply)}
                 <div className="message-content">
                   {/* Check if the message was deleted for everyone */}
                   <div className="message-time text-gray-500 flex gap-2 justify-evenly text-sm mt-1">
-                    {/* {console.log(typeof(message.sentAt)," from here")} */}
+                       <img src={reply} width={30} height={20} onClick={()=>{handleReplyClick(message._id)}} alt="" />
                               { `SENT AT:${formatDate(message.sentAt)}`}
                               <span className='ml-2'>
                               {message.sender === Authuser._id ? (
@@ -599,18 +733,27 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                   )}
                    
                 </div>
+                
               </div>
-            ))}
+            ))
+            
+          }
+
+ 
           </div>
-          <form className='h-[100px] px-4 my-3 fixed bottom-[10px] mr-[100px]' onSubmit={handleSubmit}>
-    <div className='toolbar'>
-      <button type='button' onClick={() => formatText('bold')}><b>B</b></button>
-      <button type='button' onClick={() => formatText('italic')}><i>I</i></button>
-      <button type='button' onClick={() => formatText('strikethrough')}><s>S</s></button>
-    </div>
-    <div className='w-full relative'>
-      <input
-        className='border text-xl rounded-lg block w-[750px]  p-1 bg-gray-100 border-gray-600 text-black'
+           
+          <form className='h-[100px] px-4 my-3 fixed bottom-[32px] mr-[100px]' onSubmit={handleSubmit}>
+     
+     <div className='w-full relative'>
+    {replyingTo && (
+  <div className="reply-preview h-[20%] w-[100%]  bg-green-500 border border-black border-y-8 font-bold ">
+    <p>Replying to: {messages.find((msg) => msg._id === replyingTo)?.text}</p>
+    <button onClick={cancelReply}>Cancel</button>
+  </div>
+)} 
+   <div>
+           <input
+        className='border text-xl rounded-lg block w-[750px] mt-10 p-1 bg-gray-100 border-black border-r-4  text-black'
         placeholder='Send a message'
         value={message}
         onChange={(e) => {
@@ -624,11 +767,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
           }
         }}
         rows={3}
-      />
-      <button type='submit' className='absolute inset-y-0 end-0 flex items-center pe-3'>
+        />
+      <button type='submit' className='absolute end-0 bottom-2 right-2'>
         {loading ? "Sending..." : "Send"}
       </button>
-    </div>
+        </div> 
+    </div> 
   </form>
         </div>
         

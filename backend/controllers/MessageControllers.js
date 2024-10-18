@@ -1,13 +1,11 @@
-// import { db } from "../utils/firebase.js";
-import { collection, doc, getDocs, setDoc, addDoc, query, where, updateDoc, arrayUnion, getDoc, deleteDoc, arrayRemove, Firestore, orderBy, limit } from "firebase/firestore";
-import { db } from "../utils/FireBase.js";
 import Message from "../models/MessageModel.js";
 import Conversation from "../models/ConversationModel.js";
 import User from "../models/UserModel.js";
+import mongoose from "mongoose";
 // Function to send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message,replyTo } = req.body; 
     const receiverId = req.params.toId;
     const senderId = req.params.fromId;
     console.log(receiverId);
@@ -39,6 +37,7 @@ export const sendMessage = async (req, res) => {
       text: message,
       sentAt: Date.now(),
       editedAt: null,
+      reply:replyTo ,
       deletedForEveryone: false,
       deletedFor: [],
       reactions: [],
@@ -144,44 +143,6 @@ export const deleteMessageForEveryone = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-// export const deleteMessageForEveryone = async (req, res) => {
-//   try {
-//     const { messageId } = req.params;
-//     const messageRef = doc(db, 'messages', messageId);
-//     const messageSnapshot = await getDoc(messageRef);
-//     const messageData = messageSnapshot.data();
-
-//     if (!messageSnapshot.exists()) {
-//       return res.status(404).json({ error: 'Message not found' });
-//     }
-
-//     if (messageData.deletedForEveryone) {
-//       // If the message is already deleted for everyone, delete it from the database
-//       await deleteDoc(messageRef);
-
-//       // Remove the message ID from the conversation's message array
-//       await updateConversationMessageArray(messageData.conversationId, messageId);
-
-//       res.status(200).json({ message: 'Message deleted for everyone and removed from conversation' });
-//     } else {
-//       // Update the message to reflect that it's been deleted for everyone
-//       await updateDoc(messageRef, {
-//         text: 'DELETED FOR EVERYONE',
-//         deletedForEveryone: true,
-//       });
-
-//       // Remove the message ID from the conversation's message array
-//       await updateConversationMessageArray(messageData.conversationId, messageId);
-
-//       res.status(200).json({ message: 'Message marked as deleted for everyone and removed from conversation' });
-//     }
-//   } catch (error) {
-//     console.error('Error in deleteMessageForEveryone controller:', error.message);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// };
-// Backend function to handle "Delete for me"
-
 export const deleteMessageForMe = async (req, res) => {
   const { messageId } = req.params; 
   const { userId } = req.params;
@@ -483,6 +444,46 @@ export const getMessageDeliveryAndReadTime = async (req, res) => {
 
   } catch (error) {
     console.error("Error retrieving deliveredTime and readTime:", error.message);
+    res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+  }
+};
+// Function to search messages
+export const searchMessages = async (req, res) => {
+  try {
+    const { conversationId, searchTerm } = req.body;
+
+    const messages = await Message.aggregate([
+      {
+        $search: {
+          index: "default", // The name of the Atlas Search index
+          text: {
+            query: searchTerm,
+            path: "text",
+            fuzzy: {
+              maxEdits: 2, // Allow fuzzy matching with up to 2 edits
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "conversations", // The collection name for Conversation
+          localField: "_id",
+          foreignField: "messages", // Assuming 'messages' field in Conversation contains message IDs
+          as: "conversationData"
+        }
+      },
+      {
+        $match: { "conversationData._id": new mongoose.Types.ObjectId(conversationId) }
+      },
+      {
+        $limit: 50 // Limit the number of search results
+      }
+    ]);
+
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error("Error searching messages:", error);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };

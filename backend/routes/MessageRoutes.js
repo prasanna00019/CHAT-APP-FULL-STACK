@@ -1,5 +1,5 @@
 import express from "express"
-import { changeMessageStatusToDelivered, deleteMessageForEveryone, deleteMessageForMe, editMessage, getLastMessage, getMessageDeliveryAndReadTime, getMessages, getSenderIdFromMessageId, markMessageAsRead, pinMessage, ReactMessage, sendMessage, starMessage } from "../controllers/MessageControllers.js";
+import { changeMessageStatusToDelivered, deleteMessageForEveryone, deleteMessageForMe, editMessage, getLastMessage, getMessageDeliveryAndReadTime, getMessages, getSenderIdFromMessageId, markMessageAsRead, pinMessage, ReactMessage, searchMessages, sendMessage, starMessage } from "../controllers/MessageControllers.js";
 const router=express.Router();
 router.post('/send/:fromId/:toId',sendMessage);
 router.get('/get/:fromId/:toId',getMessages);
@@ -14,5 +14,6 @@ router.put('/reaction/:messageId/:userId/',ReactMessage);
 router.get('/last-message/:userId1/:userId2', getLastMessage);
 router.put('/Message-delivered/:userId',changeMessageStatusToDelivered)
 router.put('/Message-read/:messageId',markMessageAsRead);
+router.post('/search',searchMessages);
 export default router;
 
