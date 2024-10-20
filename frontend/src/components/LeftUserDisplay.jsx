@@ -174,11 +174,13 @@ import { useAuthContext } from '../context/AuthContext';
 import user_empty from '../assets/user_empty.png';
 import { SocketContext } from '../context/SocketContext';
 import { useStatusContext } from '../context/StatusContext';
+import CryptoJS from 'crypto-js';
 import useLogout from '../hooks/useLogout';
 const LeftUserDisplay = () => {
   const {logout,loading}=useLogout();
   const { Authuser,setAuthuser } = useAuthContext();
   // console.log(Authuser," from leftuSER");
+  const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
   const { clickedId, setclickedId } = useAuthContext();
   const { users, setUsers } = useAuthContext();
   const {userInfo, setUserInfo} = useStatusContext();
@@ -248,7 +250,10 @@ const LeftUserDisplay = () => {
       socket.off('disconnect');
     };
   }, [socket, Authuser, setOnlineStatus,onlineStatus,updatedStatus,setUpdatedStatus,userInfo,setUserInfo]);
-
+  function decryptMessage(encryptedMessage, secretKey) {
+    const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  }
   useEffect(() => {
     // Fetch users if the users state is empty
     const fetchUsers = async () => {
@@ -342,7 +347,7 @@ const LeftUserDisplay = () => {
                   {user.online ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">{user.lastMessage}</p>
+              <p className="text-sm text-gray-600">{user.lastMessage!=='Loading last message...' ? decryptMessage(user.lastMessage, secretKey):"Loading last message..."}</p>
             </li>
           ))}
         </ul>

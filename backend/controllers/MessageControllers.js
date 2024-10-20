@@ -1,6 +1,7 @@
 import Message from "../models/MessageModel.js";
 import Conversation from "../models/ConversationModel.js";
 import User from "../models/UserModel.js";
+import CryptoJS from 'crypto-js';
 import mongoose from "mongoose";
 // Function to send a message
 export const sendMessage = async (req, res) => {
@@ -64,6 +65,26 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };
+export const getStarredMessages=async(req,res)=>{
+  try {
+    const { fromId, toId } = req.params;
+    const conversation = await Conversation.findOne({
+      participants: { $all: [fromId, toId] },
+    });
+    if (!conversation) {
+      console.log("No conversation found between these users.");
+      return res.status(200).json([]);
+    }
+
+    const messages = await Message.find({ _id: { $in: conversation.messages } });
+    const starredMessages = messages.filter((message) => message.starred);
+
+    return res.status(200).json({ starredMessages });
+  } catch (error) {
+    console.error("Error in getting starred messages controller:", error.message);
+    res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+  }
+}
 // Function to get all messages between two users
 export const getMessages = async (req, res) => {
   try {
@@ -78,7 +99,7 @@ export const getMessages = async (req, res) => {
     const conversation = await Conversation.findOne({
       participants: { $all: [senderId, userToChatId] },
     });
-
+    // console.log(conversation._id);
     // If no conversation exists, return an empty array
     if (!conversation) {
       console.log("No conversation found between these users.");
@@ -87,13 +108,13 @@ export const getMessages = async (req, res) => {
 
     // Retrieve messages by their IDs stored in the conversation
     const messages = await Message.find({ _id: { $in: conversation.messages } });
-
+    
     // If no messages are found, return an empty array
     if (messages.length === 0) {
       console.log("No messages found in this conversation.");
       return res.status(200).json([]);
     }
-
+    // const messagesWithConversationId = messages.map(message => ({ ...message, conversationId: conversation._id }));
     // Respond with the fetched messages
     res.status(200).json(messages);
 
@@ -448,6 +469,12 @@ export const getMessageDeliveryAndReadTime = async (req, res) => {
   }
 };
 // Function to search messages
+
+function decryptMessage(encryptedMessage, secretKey) {
+  const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
+  return bytes.toString(CryptoJS.enc.Utf8);
+}
+const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
 export const searchMessages = async (req, res) => {
   try {
     const { conversationId, searchTerm } = req.body;
@@ -457,7 +484,7 @@ export const searchMessages = async (req, res) => {
         $search: {
           index: "default", // The name of the Atlas Search index
           text: {
-            query: searchTerm,
+            query: 'U2FsdGVkX1',
             path: "text",
             fuzzy: {
               maxEdits: 2, // Allow fuzzy matching with up to 2 edits
@@ -480,10 +507,58 @@ export const searchMessages = async (req, res) => {
         $limit: 50 // Limit the number of search results
       }
     ]);
+    const matchingMessages = messages.filter((message) => {
+            try {
+              // Decrypt the message text
+              const decryptedText = decryptMessage(message.text, secretKey);
+              message.text=decryptedText;
+            //  console.log(decryptedText, " decrypted text");
+              // Check if the decrypted message contains the search term
+              return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
+            } catch (error) {
+              console.error('Error decrypting message:', error);
+              return false; // Skip messages that cannot be decrypted
+            }
+          });
+      // console.log(matchingMessages)
 
-    res.status(200).json(messages);
+    res.status(200).json(matchingMessages);
   } catch (error) {
     console.error("Error searching messages:", error);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };
+
+
+// Function to decrypt the message
+// export const searchMessages = async (req, res) => {
+//   try {
+//     const { conversationId, searchTerm } = req.body;
+
+//     // Step 1: Find messages that start with the common prefix for encrypted messages
+//     const messages = await Message.find({
+//       conversationId: new mongoose.Types.ObjectId(conversationId),
+//       encryptedText: { $regex: '^U2FsdGVkX1' } // Filter messages with the encrypted prefix
+//     });
+// console.log(messages, "messages")
+//     // Step 2: Decrypt each message and filter based on the search term
+//     const matchingMessages = messages.filter((message) => {
+//       try {
+//         // Decrypt the message text
+//         const decryptedText = decryptMessage(message.encryptedText, secretKey);
+
+//         // Check if the decrypted message contains the search term
+//         return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
+//       } catch (error) {
+//         console.error('Error decrypting message:', error);
+//         return false; // Skip messages that cannot be decrypted
+//       }
+//     });
+// console.log(matchingMessages)
+//     // Step 3: Return the matching messages
+//     res.status(200).json(matchingMessages);
+//   } catch (error) {
+//     console.error('Error searching messages:', error);
+//     res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
+//   }
+// };

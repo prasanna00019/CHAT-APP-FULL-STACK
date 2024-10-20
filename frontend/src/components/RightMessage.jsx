@@ -17,11 +17,17 @@ import star_empty from '../assets/star_empty.png';
 import toast, { Toaster } from 'react-hot-toast';
 import useSendMessage from '../hooks/useSendMessage';
 import reply from '../assets/reply.png'
+import wallpaper from '../assets/wallpaper2.jpeg'
 import info from '../assets/information.png';
+import CryptoJS from 'crypto-js'
+import red from '../assets/red.png'
 import { useStatusContext } from '../context/StatusContext';
+import MessageInfo from './MessageInfo';
+import DotsMenu from './DotsMenu';
 const RightMessage = () => {
   const { users, clickedId,setclickedId, Authuser } = useAuthContext();
   const [message, setMessage] = useState("");
+  const [searchBar,setSearchBar]=useState(false)
   const { sendMessage, loading } = useSendMessage();
   const [receiverId, setReceiverId] = useState('');
   const [userId, setUserId] = useState('');
@@ -43,6 +49,9 @@ const RightMessage = () => {
   const [starred, setStarred]=useState(false)
   const [isTyping, setIsTyping] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+  const [showStarredMessages, setShowStarredMessages] = useState(false);
+  const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
 const [searchResults, setSearchResults] = useState([]);
   const typingTimeout = useRef(null);
   const { onlineStatus, setOnlineStatus, updatedStatus, setUpdatedStatus}=useStatusContext()
@@ -78,8 +87,26 @@ const [searchResults, setSearchResults] = useState([]);
       setSearchResults([]);
     }
   },[searchTerm])
-  const handleSearch = async () => {
+  // const handleStarred=async(pinned)=>{
+  //   try{
+  //     const response=await fetch(`http://localhost:5000/message/starredMessages/${receiverId}/${Authuser._id}`,{
+  //       method:"GET",
+  //       headers:{
+  //         "Content-Type":"application/json"
+  //       }
+  //     })
+  //     if(!response.ok){
+  //       throw new Error("Failed to retrieve pinned messages");
+  //     }
+  //     const data=await response.json();
+  //     setPinnedMessages(data);
+  //   }catch(error){
+  //     console.error("Error retrieving pinned messages:", error);
+  //   }
+  // }
+  const handleSearch = async (input) => {
     const conversationId='671000e4fd882638d545ef7e';
+
     try {
       const response = await fetch("http://localhost:5000/message/search/", {
         method: "POST",
@@ -87,7 +114,7 @@ const [searchResults, setSearchResults] = useState([]);
           "Content-Type": "application/json",
         },
        
-        body: JSON.stringify({ conversationId, searchTerm }),
+        body: JSON.stringify({ conversationId, searchTerm: input }),
       });
       
       const data = await response.json();
@@ -208,7 +235,7 @@ const [searchResults, setSearchResults] = useState([]);
     return () => {
       observer.disconnect(); // Disconnect the observer to avoid memory leaks
     };
-  }, [readStatus, messages, Authuser]);
+  }, [readStatus, messages]);
   
   useEffect(()=>{
     setReceiverId(clickedId);
@@ -219,22 +246,23 @@ const [searchResults, setSearchResults] = useState([]);
     console.log(clickedId,Authuser._id," RIGHT MESSAGE.JSX")
   }
   },[clickedId,Authuser])
-  const renderSearchResults = () => {
+  const renderSearchResults = () => { 
     if (searchResults.length === 0) {
       return <p>No results found</p>;
     }
-  
+  //  console.log('h1 from right',searchResults)
     return searchResults.map((result) => (
-      <div key={result._id} className="search-result" onClick={()=>scrollToMessage(result._id)} >
+      <div key={result._id} className="search-result hover:cursor-pointer"  onClick={()=>scrollToMessage(result._id)} >
         <p>
           <strong>Sender:</strong> {result.sender} <br />
           <strong>Text:</strong> {highlightText(result.text, searchTerm)} <br />
           <strong>Sent At:</strong> {new Date(result.sentAt).toLocaleString()} <br />
-          <strong>Status:</strong> {result.status.state} <br />
+          {/* <strong>Status:</strong> {result.status.state} <br /> */}
         </p>
       </div>
     ));
   };
+  // console.log('he')
   const renderReply = (replyId) => {
     const originalMessage = messages.find((msg) => msg._id === replyId);
     const sender = originalMessage?.sender;
@@ -256,14 +284,25 @@ const [searchResults, setSearchResults] = useState([]);
   // Function to cancel the reply
   const cancelReply = () => {
     setReplyingTo(null);
-  }; 
+  };
+  // Function to encrypt a message
+function encryptMessage(message, secretKey) {
+  return CryptoJS.AES.encrypt(message, secretKey).toString();
+}
+
+// Function to decrypt a message
+function decryptMessage(encryptedMessage, secretKey) {
+  const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
+  return bytes.toString(CryptoJS.enc.Utf8);
+} 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message) return;
     try {
-      sendMessageSocket(receiverId, message);  // Send message over socket
-      setMessages((prev) => [...prev, { sender: Authuser._id,sentAt: new Date(), text: message }]); // Update UI with the new message
-      sendMessage(message,replyingTo);                      // Save message in the backend
+      const encyptmsg=encryptMessage(message,secretKey);
+      sendMessageSocket(receiverId, encyptmsg);  // Send message over socket
+      setMessages((prev) => [...prev, { sender: Authuser._id,sentAt: new Date(), text: message}]); // Update UI with the new message
+      sendMessage(encyptmsg,replyingTo);                      // Save message in the backend
       setMessage(""); // Clear the input field only after sending
       setReplyingTo(null);
     } catch (error) {
@@ -300,8 +339,11 @@ const [searchResults, setSearchResults] = useState([]);
         })
         .catch((error) => console.error("Error fetching messages:", error));
     }
-  }, [Authuser,socket,clickedId,messages]);
-  
+  }, [Authuser,socket,clickedId]);
+  // Get starred messages
+
+// console.log("pinnedMessages",pinnedMessages)
+// console.log(starredMessages)
   const customTheme={
     fontSize: '18px', // font size
 fontWeight: 'bold', // font weight
@@ -537,13 +579,52 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         className:customTheme
       });    
     }
+    const searchResultsDiv=(
+      <div className="search-results">
+      {searchTerm && 
+      renderSearchResults()}
+    </div>
+    );
+    const pinnedResultsDiv=(
+      <div className="pinned-results border border-gray-900 p-2">
+                <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
+
+      {
+        messages.filter((msg) => msg.pinned).map((msg) => (
+          <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="pinned-message bg-zinc-100">
+            <p>
+              <strong>Sender:</strong> {msg.sender} <br />
+              <strong>Text:</strong> {decryptMessage(msg.text,secretKey)} <br />
+              <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+              {/* <strong>Status:</strong> {msg.status.state} <br /> */}
+            </p>
+          </div>
+        ))
+      }
+    </div>
+    );
+    const starredResultsDiv=(
+      <div className="starred-results border border-gray-800 p-2">
+        <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
+      {messages.filter((msg) => msg.starred).map((msg) => (
+      <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="starred-message bg-zinc-100">
+        <p>
+          <strong>Sender:</strong> {msg.sender} <br />
+          <strong>Text:</strong> {decryptMessage(msg.text,secretKey)} <br />
+          <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+          {/* <strong>Status:</strong> {msg.status.state} <br /> */}
+        </p>
+      </div>
+    ))}
+    </div>
+    );
   return (
-    <>
+    <div className='flex gap-2'>
     <Toaster />
       <div className='w-full p-3 m-auto h-screen border border-b mt-[-20px] rounded-xl bg-white shadow-xl
-      shadow-blue-400 '>
+      shadow-blue-400 '  >
         {userInfo ? (
-          <div className='border border-gray-300 p-2 w-[100%] h-[80px] rounded-2xl bg-green-300 flex gap-5 justify-between'>
+          <div   className='border border-gray-300 p-2 w-[100%] h-[80px] rounded-2xl bg-green-300 flex gap-5 justify-between'>
             <div className='flex flex-col gap-1'>
             <p className='font-bold text-3xl'>{userInfo.username.toUpperCase()}  {isTyping && <div>is typing...</div>}</p>
             <p>
@@ -551,22 +632,32 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
               </p>
             {/* {console.log(userInfo.ShowLastSeen, userInfo.lastSeen)} */}
             </div>
-            <div className="search-bar">
+       { searchBar &&  
+            <div className="search-bar flex flex-col">
   <input
     type="text"
     placeholder="Search messages..."
     value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
+    onChange={(e) =>{ setSearchTerm(e.target.value); 
+      handleSearch(e.target.value);
+     }}
   />
-  <button onClick={handleSearch}>Search</button>
-</div>
-            <img src={dots} alt="" height={20} width={50} />
+  <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
+  {/* <p onClick={()=>setShowPinnedMessages(!showPinnedMessages)} >showPinned </p> */}
+  {/* <p onClick={()=>setShowStarredMessages(!showStarredMessages) */}
+  {/* // }>showStarred</p> */}
+</div>}
+            {/* <img src={dots} alt="" height={20} width={50} /> */}
+            <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
+            } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}/>
+          
           </div>
         ) : (
           <p className='font-bold '>WELCOME TO CHAT APP, CLICK HERE ON ANY USER TO BEGIN CHATTING</p>
         )}
         <div className='h-[85%] mt-3 w-full border border-gray-300 overflow-y-scroll' ref={chatContainerRef} >
-          <div className="messages-container">
+          <div className="messages-container" style={{backgroundImage:`url(${wallpaper})`,
+            backgroundSize:'cover',width:`100%`,height:'100%'}}>
           {isScrolledUp && (
       <button
         className="scroll-to-bottom-button"
@@ -575,22 +666,19 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         Scroll to Bottom
       </button>
     )}
-      <div className="search-results">
-      {searchTerm && renderSearchResults()}
-    </div>
             {messages.map((message,index) => (
-              <div
+              <div 
                 key={message._id} // Assuming message.id is available
                 ref={(el)=>(messageRefs.current[index] = el)}
                 data-message-id={message._id} data-message-sender={message.sender}
                 className={`message-item ${message.sender === Authuser._id ? 'ml-[300px]' : 'mr-[600px]'} ${message.sender === Authuser._id ? 'bg-zinc-100' : 'bg-blue-200'} rounded-md mb-2 w-[60%]`}
               >
                                             {message.reply && renderReply(message.reply)}
-                <div className="message-content">
+                <div className="message-content shadow-xl rounded-md mb-3 ">
                   {/* Check if the message was deleted for everyone */}
                   <div className="message-time text-gray-500 flex gap-2 justify-evenly text-sm mt-1">
-                       <img src={reply} width={30} height={20} onClick={()=>{handleReplyClick(message._id)}} alt="" />
-                              { `SENT AT:${formatDate(message.sentAt)}`}
+                       <img className='hover:cursor-pointer' src={reply} width={30} height={20} onClick={()=>{handleReplyClick(message._id)}} alt="" />
+                              {<span className='font-bold text-black'>  SENT AT:{formatDate(message.sentAt)}</span>}
                               <span className='ml-2'>
                               {message.sender === Authuser._id ? (
   message.status?.state === 'read' ? (
@@ -606,14 +694,16 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
               </span>
               {
                message.sender===Authuser._id && 
-              <img src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
-                getMessageDeliveryAndReadTime(message._id);}
+              <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
+                getMessageDeliveryAndReadTime(message._id);
+                scrollToMessage(message._id)
+              }
               } height={10} alt="" />
                            }             </div>
                   {message.deletedForEveryone && !message.deletedFor.includes(Authuser._id) ? (
                     <div className="deleted-message flex gap-5 italic text-gray-500 h-[50px]">
                       <span className='mt-3 ml-5 text-3xl'>DELETED FOR EVERYONE</span>
-                      <img onClick={() => handleDeleteForEveryone(message._id)} src={dustbin} width={40} height={10} alt="" />
+                      <img className='hover:cursor-pointer'  onClick={() => handleDeleteForEveryone(message._id)} src={dustbin} width={40} height={10} alt="" />
                     </div>
                   ) : (
                     !message.deletedFor?.includes(Authuser._id) && (
@@ -627,13 +717,13 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                               className="w-full border p-1"
                             />
                             <button
-                              className="text-blue-500 ml-2"
+                              className="text-blue-500 ml-2 hover:cursor-pointer"
                               onClick={() => handleSubmitEdit(message._id)}
                             >
                               Save
                             </button>
-                            <button
-                              className="text-red-500 ml-2"
+                            <button 
+                              className="text-red-500 ml-2 hover:cursor-pointer"
                               onClick={handleCancelEdit}
                             >
                               Cancel
@@ -642,7 +732,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                         ) : (
                           <>
                             <div className='flex gap-2 justify-between'>
-                             <p className='ml-5 mt-2'> {message.sender === Authuser._id ? 'You' : userInfo?.username}: {message.text}</p>
+                             <p className='ml-5 mt-2'> {message.sender === Authuser._id ? 'You' : userInfo?.username}: {decryptMessage(message.text,secretKey)}</p>
                              <div className='mt-2 mr-4'> 
                               {message.sender === Authuser._id && (
                                 <img
@@ -661,12 +751,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                             {/* Show delete options */}
                            <div className='flex gap-5 justify-around mt-2'> 
                             { message.starred ?
-                            <img onClick={() => updateStarredStatus(message._id)} src={star_filled} width={20} height={20}  alt="" />:
-                            <img onClick={()=> updateStarredStatus(message._id)} src={star_empty} width={20} height={20}  alt="" />}
+                            <img className='hover:cursor-pointer' onClick={() => updateStarredStatus(message._id)} src={star_filled} width={20} height={20}  alt="" />:
+                            <img className='hover:cursor-pointer' onClick={()=> updateStarredStatus(message._id)} src={star_empty} width={20} height={20}  alt="" />}
                             {
                               message.pinned ?
-                              <img onClick={() => updatePinnedStatus(message._id)} src={pin} width={20} height={20} alt="" />:
-                              <img onClick={() => updatePinnedStatus(message._id)} src={unpin} width={20} height={20} alt="" />
+                              <img className='hover:cursor-pointer'  onClick={() => updatePinnedStatus(message._id)} src={pin} width={20} height={20} alt="" />:
+                              <img className='hover:cursor-pointer'  onClick={() => updatePinnedStatus(message._id)} src={unpin} width={20} height={20} alt="" />
                             }
                              {
                               message?.reactions?.map(reaction => (
@@ -678,37 +768,28 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                           </div>               
                          <div className='flex gap-2 mt-2 justify-center'>
                             <button
-                              className="delete-button text-red-500 ml-2"
+                              className="delete-button text-red-500 ml-2 hover:cursor-pointer"
                               onClick={() => toggleDeleteOptions(message._id)}
                               >
-                              Delete
+                              <img src={red} height={30} width={40} alt="" />
                             </button>
                             <span>
-                              <img src={reaction} onClick={()=>toggleReactions(message._id)} width={25} height={25} alt="" />
+                              <img className='hover:cursor-pointer'  src={reaction} onClick={()=>toggleReactions(message._id)} width={25} height={25} alt="" />
                             </span>
                               </div>  
                            <span className='ml-10'>{message.editedAt!=null?`Edited at ${formatDate(message.editedAt)}`:''}</span>
-                           <img src={copyIcon} width={20} height={20} onClick={()=>{CopyMessage(message.text)}} className='mt-[-15px]' alt="" />
-                           {
-                            showMessageInfo===message._id && (
-                              // getMessageDeliveryAndReadTime(message._id)
-                              <div className="message-info mt-2 bg-gray-100 p-2 border border-gray-300 rounded-lg">
-                              <p className="text-gray-500">Delivered Time: {messageInfo.deliveredTime || 'Not delivered'}</p>
-                              <p className="text-gray-500">Read Time: {messageInfo.readTime || 'Not read'}</p>
-                            </div>
-                            )
-                           }
+                           <img  src={copyIcon} width={20} height={20} onClick={()=>{CopyMessage(message.text)}} className='hover:cursor-pointer mt-[-15px]' alt="" />
                             {showDeleteOptions === message._id && (
                               <div className="delete-options mt-2 flex flex-col bg-gray-100 p-2 border border-gray-300 rounded-lg">
                                 <button
-                                  className="text-blue-500 mb-2"
+                                  className="text-blue-500 mb-2 hover:cursor-pointer"
                                   onClick={() => handleDeleteForMe(message._id)}
                                 >
                                   Delete for me
                                 </button>
                                 {message.sender === Authuser._id && (
                                   <button
-                                    className="text-red-500"
+                                    className="text-red-500 hover:cursor-pointer"
                                     onClick={() => handleDeleteForEveryone(message._id)}
                                   >
                                     Delete for everyone
@@ -719,9 +800,9 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                             {/* Reaction buttons/icons */}
         { reactionOptions === message._id && (
        <div className="delete-options mt-2 flex  bg-gray-100 p-2 border border-gray-300 rounded-lg">   
-         <button onClick={() => AddReactions(message._id,Authuser._id,'👍')}>👍</button>
-        <button onClick={() => AddReactions(message._id,Authuser._id,'❤️')}>❤️</button>
-        <button onClick={() => AddReactions(message._id,Authuser._id,'😂')}>😂</button></div>)
+         <button className='hover:cursor-pointer' onClick={() => AddReactions(message._id,Authuser._id,'👍')}>👍</button>
+        <button className='hover:cursor-pointer'  onClick={() => AddReactions(message._id,Authuser._id,'❤️')}>❤️</button>
+        <button className='hover:cursor-pointer'  onClick={() => AddReactions(message._id,Authuser._id,'😂')}>😂</button></div>)
         }
                           </>
                         )}
@@ -748,7 +829,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     {replyingTo && (
   <div className="reply-preview h-[20%] w-[100%]  bg-green-500 border border-black border-y-8 font-bold ">
     <p>Replying to: {messages.find((msg) => msg._id === replyingTo)?.text}</p>
-    <button onClick={cancelReply}>Cancel</button>
+    <button className='hover:cursor-pointer'  onClick={cancelReply}>Cancel</button>
   </div>
 )} 
    <div>
@@ -777,7 +858,15 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         </div>
         
       </div>
-    </>
+    
+    {
+      (showPinnedMessages || showStarredMessages || showMessageInfo!==null || searchTerm!=='') && 
+      <MessageInfo showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} showMessageInfo={showMessageInfo} searchTerm={searchTerm} 
+      setShowPinnedMessages={setShowPinnedMessages} setShowStarredMessages={setShowStarredMessages} setShowMessageInfo={setShowMessageInfo} setSearchTerm={setSearchTerm}
+      searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages={messages}
+      />
+}
+      </div>
   );
 };
 

@@ -13,13 +13,14 @@ import { Link } from 'react-router-dom';
 import LeftStory from '../components/LeftStory';
 import RightStory from '../components/RightStory';
 import TestComp from '../components/TestComp';
+
 // Initialize Socket.IO client
 const socket = io('http://localhost:5000'); // Make sure this URL matches your backend server's URL
 
 const Home = () => { 
 const { Authuser,setAuthuser} = useAuthContext(); // Use authUser from context
-const [chat,setChat]=useState(true);
-const [stories,setStories]=useState(false);
+const [chat,setChat]=useState(false);
+const [stories,setStories]=useState(true);
 useEffect(()=>{
   setAuthuser(Authuser);
 },[Home,LeftUserDisplay,RightMessage])
@@ -55,6 +56,7 @@ const authContext = useAuthContext();
     <button>User Profile</button>
    </Link> */}
    {/* <TestComp/> */}
+   {/* <ParentComponent/> */}
   </div>
   );
 };
