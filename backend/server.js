@@ -160,16 +160,28 @@ const updateUserStatusInDatabase = async(userId,status) => {
         delete userSocketMap[socket.id];
       
     });
+    socket.on('deleteStory', async (storyId) => {
+      console.log('delete socket working well ... ')
+      try {
+        await Story.findByIdAndDelete(storyId); // Delete the story from the database
+        io.emit('storyDeleted', storyId); // Optionally, notify all clients about the deletion
+        // socket.broadcast.emit('storyDeleted', storyId);
+      } catch (error) {
+        console.error('Error deleting story:', error);
+        socket.emit('storyError', { message: 'Failed to delete story' });
+      }
+    });
+    
     socket.on('viewStory', async ({ storyId, userId }) => {
       try {
-        // console.log(storyId);
         const story = await Story.findById(storyId);
         if (!story) return;
         const alreadyViewed = story.viewers.some(viewer => viewer.userId.toString() === userId);
-        console.log(alreadyViewed);
+        // console.log(alreadyViewed);
         if (!alreadyViewed) {
           story.viewers.push({ userId, viewedAt: new Date() });
           await story.save();
+          socket.broadcast.emit('updateViewers', {storyId, viewers:story.viewers});
         }
       } catch (error) {
         console.error('Error updating view count:', error);
@@ -184,7 +196,8 @@ const updateUserStatusInDatabase = async(userId,status) => {
         
         // Emit the new story to all connected clients
         io.emit('storyCreated', newStory);
-        
+        socket.broadcast.emit('newStory', { message: 'New Story added' , story: newStory });
+
         // console.log('Story created and emitted:', newStory);
       } catch (error) {
         console.error('Error creating story:', error);
@@ -192,6 +205,37 @@ const updateUserStatusInDatabase = async(userId,status) => {
         socket.emit('storyError', { message: 'Failed to create story' });
       }
     });
+    socket.on('likeStory', async ({ storyId, userId }) => {
+      try {
+        const story = await Story.findById(storyId);
+        if (!story) {
+          return;
+        }
+    
+        // Check if the user has already liked the story
+        const alreadyLiked = story.likes.some(like => like.userId.toString() === userId);
+        // console.log('liked status ', alreadyLiked);
+        if (!alreadyLiked) {
+          // Add the like to the story
+          story.likes.push({ userId });
+          await story.save();
+    
+          // Emit the updated likes to all clients
+          io.emit('updateLikes', { storyId, likes: story.likes });
+        }
+        else{
+          // Remove the like from the story
+          story.likes = story.likes.filter(like => like.userId.toString() !== userId);
+          await story.save();
+    
+          // Emit the updated likes to all clients
+          io.emit('updateLikes', { storyId, likes: story.likes });
+        }
+      } catch (error) {
+        console.error('Error liking story:', error);
+      }
+    });
+    
   });
 // Middleware
 app.use(express.json());

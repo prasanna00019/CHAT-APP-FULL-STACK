@@ -1,74 +1,80 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 
-const TestComp = () => {
-  const [readStatus, setReadStatus] = useState({}); // Track read status
-  const messageRefs = useRef([]); // References to message elements
+// Dummy data for usernames
+const allUsernames = ['john_doe', 'jane_smith', 'admin', 'superuser', 'test_user'];
 
-  // Simulate a large number of messages
-  const messages = Array.from({ length: 100 }, (_, i) => ({
-    id: `msg-${i}`,
-    text: `This is message number ${i + 1}`,
-  }));
+function TestComp() {
+  const [inputValue, setInputValue] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredUsernames, setFilteredUsernames] = useState([]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const messageId = entry.target.getAttribute('data-message-id');
-            setReadStatus((prevStatus) => ({
-              ...prevStatus,
-              [messageId]: true, // Mark the message as read
-            }));
-            // console.log('Read status:message id', readStatus);
-          }
-          else{
-            const messageId = entry.target.getAttribute('data-message-id');
-            if(!readStatus[messageId]){
-            
-            setReadStatus((prevStatus) => ({
-              ...prevStatus,
-              [messageId]: false
-            }))
-        }
-          }
-        });
-      },
-      { threshold: 0.99 } // Trigger when 50% of the message is visible
-    );
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setInputValue(value);
 
-    // Observe each message
-    messageRefs.current.forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
+    // Show dropdown when "@" is detected followed by some characters
+    const lastAtIndex = value.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const lastWord = value.slice(lastAtIndex + 1); // Text after the last '@'
+      if (lastWord.length > 0 && /^[a-zA-Z0-9_]+$/.test(lastWord)) {
+        setShowDropdown(true);
+        const matches = allUsernames.filter((username) =>
+          username.toLowerCase().startsWith(lastWord.toLowerCase())
+        );
+        setFilteredUsernames(matches);
+      } else {
+        setShowDropdown(false); // Don't show dropdown for non-alphanumeric characters after "@"
+      }
+    } else {
+      setShowDropdown(false);
+    }
+  };
 
-    // Cleanup the observer on component unmount
-    return () => {
-      messageRefs.current.forEach((ref) => {
-        if (ref) observer.unobserve(ref);
-      });
-    };
-  }, [messages]);
+  const handleUsernameSelect = (username) => {
+    // Replace the "@" term in the input with the selected username
+    const lastAtIndex = inputValue.lastIndexOf('@');
+    const newValue = inputValue.slice(0, lastAtIndex + 1) + username + ' ';
+    setInputValue(newValue);
+    setShowDropdown(false);
+  };
 
   return (
-    <div className="message-container" style={{ height: '400px', overflowY: 'scroll' }}>
-      {messages.map((message, index) => (
+    <div>
+      <input
+        type="text"
+        value={inputValue}
+        onChange={handleInputChange}
+        placeholder="Type a message..."
+        style={{ width: '300px' }}
+      />
+      {showDropdown && (
         <div
-          key={message.id}
-          ref={(el) => (messageRefs.current[index] = el)}
-          data-message-id={message.id}
-          className="message-item"
-          style={{ border: '1px solid black', padding: '10px', margin: '5px 0' }}
+          className="dropdown"
+          style={{
+            border: '1px solid #ccc',
+            position: 'absolute',
+            backgroundColor: 'white',
+            width: '300px',
+            zIndex: 1,
+          }}
         >
-          <p>{message.text}</p>
-          {/* Show single tick if not read, double tick if read */}
-          <span className="read-status">
-            {readStatus[message.id] ? '✔✔' : '✔'}
-          </span>
+          {filteredUsernames.length > 0 ? (
+            filteredUsernames.map((username) => (
+              <div
+                key={username}
+                onClick={() => handleUsernameSelect(username)}
+                style={{ cursor: 'pointer', padding: '5px' }}
+              >
+                {username}
+              </div>
+            ))
+          ) : (
+            <div style={{ padding: '5px', color: 'gray' }}>No matches found</div>
+          )}
         </div>
-      ))}
+      )}
     </div>
   );
-};
+}
 
 export default TestComp;

@@ -149,7 +149,7 @@ export const deleteMessageForEveryone = async (req, res) => {
       }
     } else {
       // Update the message to reflect that it's been deleted for everyone
-      message.text = 'DELETED FOR EVERYONE';
+      message.text = encryptMessage('DELETED FOR EVERYONE',secretKey);
       message.deletedForEveryone = true;
       await message.save();
 
@@ -184,14 +184,14 @@ export const editMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const { editedText } = req.body; // Updated message text
-
+  //  console.log(editedText);
     // Update the message's text and the editedAt timestamp
     await Message.findByIdAndUpdate(messageId, {
-      text: editedText,
+      text:encryptMessage( editedText,secretKey),
       editedAt: new Date() // Record the time of edit
     }, { new: true }); // Return the updated document
-
-    res.status(200).json({ message: 'Message updated successfully' });
+    const message= await Message.findById(messageId); 
+    res.status(200).json( message);
   } catch (error) {
     console.error('Error updating message:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -469,7 +469,9 @@ export const getMessageDeliveryAndReadTime = async (req, res) => {
   }
 };
 // Function to search messages
-
+function encryptMessage(message, secretKey) {
+  return CryptoJS.AES.encrypt(message, secretKey).toString();
+}
 function decryptMessage(encryptedMessage, secretKey) {
   const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
   return bytes.toString(CryptoJS.enc.Utf8);

@@ -60,6 +60,10 @@ export const updateStatus = async (req, res) => {
         const { userId } = req.params;
         const { online, lastSeen} = req.body;
         // Update the online status
+        const currentUser = await User.findById(userId);
+        if (currentUser && currentUser.online === online) {
+          return res.status(200).json({ message: 'Nothing to update in online' });
+        }
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { online:online,lastSeen: lastSeen },

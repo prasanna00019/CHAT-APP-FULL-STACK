@@ -19,8 +19,8 @@ const socket = io('http://localhost:5000'); // Make sure this URL matches your b
 
 const Home = () => { 
 const { Authuser,setAuthuser} = useAuthContext(); // Use authUser from context
-const [chat,setChat]=useState(false);
-const [stories,setStories]=useState(true);
+const [chat,setChat]=useState(true);
+const [stories,setStories]=useState(false);
 useEffect(()=>{
   setAuthuser(Authuser);
 },[Home,LeftUserDisplay,RightMessage])

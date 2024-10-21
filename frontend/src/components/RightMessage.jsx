@@ -24,6 +24,7 @@ import red from '../assets/red.png'
 import { useStatusContext } from '../context/StatusContext';
 import MessageInfo from './MessageInfo';
 import DotsMenu from './DotsMenu';
+import TestComp from './TestComp';
 const RightMessage = () => {
   const { users, clickedId,setclickedId, Authuser } = useAuthContext();
   const [message, setMessage] = useState("");
@@ -268,7 +269,7 @@ const [searchResults, setSearchResults] = useState([]);
     const sender = originalMessage?.sender;
     return originalMessage ? (
       <div onClick={()=>scrollToMessage(replyId)} className="reply-content border border-black rounded-lg  border-x-green-600 border-x-8 bg-white">
-        <blockquote>{sender === Authuser._id ? 'YOU':userInfo.username}:{originalMessage.text}</blockquote>
+        <blockquote>{sender === Authuser._id ? 'YOU':userInfo.username}:{decryptMessage(originalMessage.text,secretKey)}</blockquote>
       </div>
     ) : (
       <div className="reply-content">
@@ -331,15 +332,18 @@ function decryptMessage(encryptedMessage, secretKey) {
 
   // Fetch messages between the current user and the selected user when the component mounts or clickedId changes
   useEffect(() => {
+    
     if (clickedId) {
+      
       fetch(`http://localhost:5000/message/get/${Authuser._id}/${clickedId}`)
         .then((res) => res.json())
         .then((data) => {
           setMessages(data);
+          
         })
         .catch((error) => console.error("Error fetching messages:", error));
     }
-  }, [Authuser,socket,clickedId]);
+  }, [Authuser,socket,clickedId,messages]);
   // Get starred messages
 
 // console.log("pinnedMessages",pinnedMessages)
@@ -451,29 +455,50 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
 
     setShowDeleteOptions(null); // Hide options after selection
   };
-
   // Function to handle editing message
+  function makeLinksClickable(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    // const urlRegex = /https?:\/\/(?:www\.)?[a-z0-9-]+(?:\.[a-z]{2,})+(?:\/[^\s]*)?/gi;
+    
+    // If there are no matches, return the original text
+    if (!urlRegex.test(text)) {
+      return text;
+    }
+  
+    // Split the text by the regex pattern and wrap URLs with <a> tags
+    return text.split(urlRegex).map((part, index) =>
+      urlRegex.test(part) ? (
+        <a className='text-blue-500' key={index} href={part} target="_blank" rel="noopener noreferrer">
+          {part}
+        </a>
+      ) : (
+        part
+      )
+    );
+  }
+    
   const handleEditMessage = (messageId, currentText) => {
     setEditingMessageId(messageId);
     setEditedText(currentText);
+
   };
   // Function to submit edited message
   const handleSubmitEdit = async (messageId) => {
-    // setEditClick(true);
     const res = await fetch(`http://localhost:5000/message/edit/${messageId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({editedText}),
+      body: JSON.stringify({editedText: editedText}),
     });
 
     if (res.ok) {
       const updatedMessage = await res.json();
+      // console.log(updatedMessage);
       setMessages((prevMessages) =>
         prevMessages.map((msg) => (msg._id === messageId ? updatedMessage : msg))
       );
       setEditingMessageId(null);
       setEditedText('');
-      toast.success(  `MESSAGE EDITED`,{
+      toast.success(`MESSAGE EDITED`,{
         style:customTheme
        });   
     } else {
@@ -657,7 +682,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         )}
         <div className='h-[85%] mt-3 w-full border border-gray-300 overflow-y-scroll' ref={chatContainerRef} >
           <div className="messages-container" style={{backgroundImage:`url(${wallpaper})`,
-            backgroundSize:'cover',width:`100%`,height:'100%'}}>
+            backgroundSize:'cover',width:`100%`,height:'fit%',backgroundPositionY:'center',backgroundscroll:'yes'}}>
           {isScrolledUp && (
       <button
         className="scroll-to-bottom-button"
@@ -666,7 +691,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         Scroll to Bottom
       </button>
     )}
-            {messages.map((message,index) => (
+            {messages?.map((message,index) => (
               <div 
                 key={message._id} // Assuming message.id is available
                 ref={(el)=>(messageRefs.current[index] = el)}
@@ -676,30 +701,34 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                                             {message.reply && renderReply(message.reply)}
                 <div className="message-content shadow-xl rounded-md mb-3 ">
                   {/* Check if the message was deleted for everyone */}
-                  <div className="message-time text-gray-500 flex gap-2 justify-evenly text-sm mt-1">
-                       <img className='hover:cursor-pointer' src={reply} width={30} height={20} onClick={()=>{handleReplyClick(message._id)}} alt="" />
-                              {<span className='font-bold text-black'>  SENT AT:{formatDate(message.sentAt)}</span>}
-                              <span className='ml-2'>
-                              {message.sender === Authuser._id ? (
-  message.status?.state === 'read' ? (
-    <span> <img src={bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
-  ) : message.status?.state === 'delivered' ? (
-    <span> <img src={normaltick} width={30} height={10} alt="" /> </span> // Normal double tick
-  ) : message.status?.state === 'sent' ? (
-    <span>✔</span> // Single tick
-  ) : (
-    '' // Fallback if no valid state
-  )
+             {  !message?.deletedFor?.includes(Authuser._id) ? (
+               
+             
+              <div className="message-time text-gray-500 flex gap-2 justify-evenly text-sm mt-1">
+                    <img className='hover:cursor-pointer' src={reply} width={30} height={20} onClick={()=>{handleReplyClick(message._id)}} alt="" />
+                          {<span className='font-bold text-black'>  SENT AT:{formatDate(message.sentAt)}</span>}
+                          <span className='ml-2'>
+                          {message.sender === Authuser._id ? (
+message.status?.state === 'read' ? (
+<span> <img src={bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
+) : message.status?.state === 'delivered' ? (
+<span> <img src={normaltick} width={30} height={10} alt="" /> </span> // Normal double tick
+) : message.status?.state === 'sent' ? (
+<span>✔</span> // Single tick
+) : (
+'' // Fallback if no valid state
+)
 ) : null}
-              </span>
-              {
-               message.sender===Authuser._id && 
-              <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
-                getMessageDeliveryAndReadTime(message._id);
-                scrollToMessage(message._id)
-              }
-              } height={10} alt="" />
-                           }             </div>
+
+          </span>
+          {
+            message.sender===Authuser._id && 
+          <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
+            getMessageDeliveryAndReadTime(message._id);
+            scrollToMessage(message._id)
+          }
+          } height={10} alt="" />
+                        }             </div>):""}
                   {message.deletedForEveryone && !message.deletedFor.includes(Authuser._id) ? (
                     <div className="deleted-message flex gap-5 italic text-gray-500 h-[50px]">
                       <span className='mt-3 ml-5 text-3xl'>DELETED FOR EVERYONE</span>
@@ -732,7 +761,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                         ) : (
                           <>
                             <div className='flex gap-2 justify-between'>
-                             <p className='ml-5 mt-2'> {message.sender === Authuser._id ? 'You' : userInfo?.username}: {decryptMessage(message.text,secretKey)}</p>
+                             <p className='ml-5 mt-2'> {message?.sender === Authuser._id ? 'You' : userInfo?.username}: {makeLinksClickable(decryptMessage(message?.text,secretKey))}</p>
                              <div className='mt-2 mr-4'> 
                               {message.sender === Authuser._id && (
                                 <img
@@ -741,7 +770,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                                   height={10}
                                   className='ml-2 cursor-pointer'
                                   alt="Edit"
-                                  onClick={() => handleEditMessage(message._id, message.text)}
+                                  onClick={() => handleEditMessage(message._id, decryptMessage(message.text,secretKey))}
                                 />
                               )}
                               </div>
@@ -780,7 +809,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                            <span className='ml-10'>{message.editedAt!=null?`Edited at ${formatDate(message.editedAt)}`:''}</span>
                            <img  src={copyIcon} width={20} height={20} onClick={()=>{CopyMessage(message.text)}} className='hover:cursor-pointer mt-[-15px]' alt="" />
                             {showDeleteOptions === message._id && (
-                              <div className="delete-options mt-2 flex flex-col bg-gray-100 p-2 border border-gray-300 rounded-lg">
+                              <div className="delete-options mt-2 mb-5 flex flex-col bg-gray-100 p-2 border border-gray-300 rounded-lg">
                                 <button
                                   className="text-blue-500 mb-2 hover:cursor-pointer"
                                   onClick={() => handleDeleteForMe(message._id)}
@@ -832,9 +861,9 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     <button className='hover:cursor-pointer'  onClick={cancelReply}>Cancel</button>
   </div>
 )} 
-   <div>
+   <div className='flex flex-col gap-5'>
            <input
-        className='border text-xl rounded-lg block w-[750px] mt-10 p-1 bg-gray-100 border-black border-r-4  text-black'
+        className='border text-xl rounded-lg block w-[600px] mt-10 p-1 bg-gray-100 border-black border-r-4  text-black'
         placeholder='Send a message'
         value={message}
         onChange={(e) => {
@@ -866,6 +895,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages={messages}
       />
 }
+{/* <TestComp/> */}
       </div>
   );
 };

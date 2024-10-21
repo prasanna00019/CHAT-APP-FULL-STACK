@@ -351,6 +351,7 @@ const LeftUserDisplay = () => {
             </li>
           ))}
         </ul>
+        <p className='font-bold mt-5'>YOUR MESSAGES ARE END TO END ENCRYTPED</p>
       </div>
     </div>
   );
