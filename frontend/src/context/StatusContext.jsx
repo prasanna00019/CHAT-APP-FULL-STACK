@@ -13,10 +13,11 @@ export const StatusProvider = ({ children }) => {
   const [updatedStatus, setUpdatedStatus] = useState({});
   const [ clickedUserId, setClickedUserId ] = useState(null); // Updated to handle clickedUserId
   const [clickedStoryId,setClickedStoryId]=useState('')
+  const [messages, setMessages]=useState([]); // GROUP MESSAGES
   const [userInfo, setUserInfo] = useState(null);
   return (
     <StatusContext.Provider value={{ onlineStatus, setOnlineStatus, updatedStatus, setUpdatedStatus ,userInfo, setUserInfo
-      ,clickedStoryId,setClickedStoryId ,clickedUserId,setClickedUserId
+      ,clickedStoryId,setClickedStoryId ,clickedUserId,setClickedUserId ,messages, setMessages
     }}>
       {children}
     </StatusContext.Provider>

@@ -126,22 +126,17 @@ export const getMessages = async (req, res) => {
 export const deleteMessageForEveryone = async (req, res) => {
   try {
     const { messageId } = req.params;
-  console.log(messageId);
-  console.log(typeof(messageId));
     // Find the message in the database
     const message = await Message.findById(messageId);
-
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-
     if (message.deletedForEveryone) {
       // If the message is already marked as deleted for everyone, remove it from the database
       await Message.findByIdAndDelete(messageId);
 
       // Find the conversation that contains this message
       const conversation = await Conversation.findOne({ messages: messageId });
-
       if (conversation) {
         // Remove the message ID from the conversation's messages array
         conversation.messages.pull(messageId);

@@ -9,7 +9,7 @@ export const SocketProvider = ({ children }) => {
   const {Authuser}=useAuthContext();
   // console.log(Authuser, "from socketcontext.jsx");
   const socket = io('http://localhost:5000',{
-    query:{userId:clickedId,Authuser:Authuser._id},
+    query:{userId:clickedId,Authuser:Authuser?._id || null},
  
   });
   const [socketId, setSocketId] = useState(null);

@@ -82,7 +82,6 @@ const RightStory = () => {
           color: '#fff',
         },
       })
-      // console.log(viewers, ' viewers  from updateViewers');
       console.log(viewers.length ," viewers length")
       setViewers((prevViewers) => [
         ...prevViewers,

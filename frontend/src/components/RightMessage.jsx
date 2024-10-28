@@ -147,25 +147,18 @@ const [searchResults, setSearchResults] = useState([]);
     socket.on('user_online', ({ userId, joinedTime }) => {
       // Update the UI to show the user as online
      if(userId){
-       
-     
       console.log(`User ${userId} is online , joined at ${joinedTime}`);
-      // updateUserOnlineStatus(userId, true);
-      // updateUserStatusInDatabase(userId,{online:true,lastSeen:null});
      }
     });
     socket.on('user_offline', ({ userId,lastSeen}) => {
-      // Update the UI to show the user as offline with last seen time
       console.log(`User ${userId} is offline, last seen: ${lastSeen}`);
-      // updateUserOnlineStatus(userId, false, lastSeen);
-      // updateUserStatusInDatabase(userId,{online:false,lastSeen});
     });
     socket.on('typing', () => {
-      console.log('User is typing...');
+      // console.log('User is typing...');
       setIsTyping(true);
     });
     socket.on('stop-typing', () => {
-      console.log('User stopped typing...');
+      // console.log('User stopped typing...');
       setIsTyping(false);
     });
     return () => {
@@ -251,7 +244,6 @@ const [searchResults, setSearchResults] = useState([]);
     if (searchResults.length === 0) {
       return <p>No results found</p>;
     }
-  //  console.log('h1 from right',searchResults)
     return searchResults.map((result) => (
       <div key={result._id} className="search-result hover:cursor-pointer"  onClick={()=>scrollToMessage(result._id)} >
         <p>
@@ -278,7 +270,6 @@ const [searchResults, setSearchResults] = useState([]);
     );
   };
   const handleReplyClick = (messageId) => {
-    console.log(messageId, " messaged if ");
     setReplyingTo(replyingTo === messageId ? null : messageId);
     console.log(replyingTo, " replying to");
   };

@@ -251,8 +251,12 @@ const LeftUserDisplay = () => {
     };
   }, [socket, Authuser, setOnlineStatus,onlineStatus,updatedStatus,setUpdatedStatus,userInfo,setUserInfo]);
   function decryptMessage(encryptedMessage, secretKey) {
+    try{
     const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
-    return bytes.toString(CryptoJS.enc.Utf8);
+    return bytes.toString(CryptoJS.enc.Utf8);}
+    catch(error){
+      return encryptedMessage;
+    }
   }
   useEffect(() => {
     // Fetch users if the users state is empty
@@ -347,7 +351,7 @@ const LeftUserDisplay = () => {
                   {user.online ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">{user.lastMessage!=='Loading last message...' ? decryptMessage(user.lastMessage, secretKey):"Loading last message..."}</p>
+              {/* <p className="text-sm text-gray-600">{user.lastMessage!=='Loading last message...' ? decryptMessage(user.lastMessage, secretKey):"Loading last message..."}</p> */}
             </li>
           ))}
         </ul>
