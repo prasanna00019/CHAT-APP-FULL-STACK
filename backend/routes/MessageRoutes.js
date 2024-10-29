@@ -1,10 +1,11 @@
 import express from "express"
-import { changeMessageStatusToDelivered, deleteMessageForEveryone, deleteMessageForMe, editMessage, getLastMessage, getMessageDeliveryAndReadTime, getMessages, getSenderIdFromMessageId, getStarredMessages, markMessageAsRead, pinMessage, ReactMessage, searchMessages, sendMessage, starMessage } from "../controllers/MessageControllers.js";
+import { changeMessageStatusToDelivered, deleteMessageForEveryone, deleteMessageForMe, editMessage, getLastMessage, getMessageById, getMessageDeliveryAndReadTime, getMessages, getSenderIdFromMessageId, getStarredMessages, markMessageAsRead, pinMessage, ReactMessage, searchMessages, sendMessage, starMessage } from "../controllers/MessageControllers.js";
 const router=express.Router();
 router.post('/send/:fromId/:toId',sendMessage);
 router.get('/get/:fromId/:toId',getMessages);
 router.get('/get-messageDeliveryAndReadTime/:messageId',getMessageDeliveryAndReadTime)
 router.get('/get-senderId-from-messageId/:messageId',getSenderIdFromMessageId)
+router.get('/getMessageById/:messageId',getMessageById)
 router.delete('/deleteForEveryone/:messageId',deleteMessageForEveryone);
 router.delete('/deleteForMe/:messageId/:userId',deleteMessageForMe);
 router.put('/edit/:messageId',editMessage);    

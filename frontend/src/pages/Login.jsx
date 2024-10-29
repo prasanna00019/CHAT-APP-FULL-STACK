@@ -5,12 +5,11 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const {loading,login}=useLogin();
+  const { loading, login } = useLogin();
   const handleSubmit = async (e) => {
     e.preventDefault();
     await login(email, password);
   };
-
   return (
     <div className='flex flex-col items-center justify-center min-w-96 mx-auto'>
       <div className='w-full p-6 bg-white-800 rounded-lg shadow-md bg-gray-200 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-70 border border-gray-100'>

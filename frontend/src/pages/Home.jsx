@@ -9,57 +9,59 @@ import LeftStory from '../components/LeftStory';
 import RightStory from '../components/RightStory';
 import { useAuthContext } from '../context/AuthContext';
 import LeftGroup from '../components/LeftGroup';
-const Home = () => { 
-const { Authuser,setAuthuser} = useAuthContext(); 
-const [chat,setChat]=useState(false);
-const [group, setgroup] = useState(true);
-const [stories,setStories]=useState(false);
-useEffect(()=>{
-  setAuthuser(Authuser);
-},[Home,LeftUserDisplay,RightMessage])
-const toggleLeftBar = (t) => {
-  if(t=='1'){
-    setChat(true);
-    setgroup(false);
-    setStories(false);
-  }else if(t=='2') {
-    setChat(false);
-    setStories(true);
-    setgroup(false);
+import RightMessage2 from '../components/RightMessage2';
+const Home = () => {
+  const { Authuser, setAuthuser } = useAuthContext();
+  const [chat, setChat] = useState(true);
+  const [group, setgroup] = useState(false);
+  const [stories, setStories] = useState(false);
+  useEffect(() => {
+    setAuthuser(Authuser);
+  }, [Home, LeftUserDisplay, RightMessage])
+  const toggleLeftBar = (t) => {
+    if (t == '1') {
+      setChat(true);
+      setgroup(false);
+      setStories(false);
+    } else if (t == '2') {
+      setChat(false);
+      setStories(true);
+      setgroup(false);
+    }
+    else if (t == '3') {
+      setChat(false);
+      setgroup(true);
+      setStories(false);
+    }
   }
-  else if(t=='3') {
-    setChat(false);
-    setgroup(true);
-    setStories(false);
-  }
-} 
-const authContext = useAuthContext();
+  const authContext = useAuthContext();
   return (
-   <div className='flex gap-10 justify-evenly  w-full h-screen '>
-    <div className=' h-screen bg-blue-400 p-1 w-[90px] pl-2 flex flex-col gap-3  absolute ml-[-90%] border border-b mt-[-20px]
+    <div className='flex gap-10 justify-evenly  w-full h-screen '>
+      <div className=' h-screen bg-blue-400 p-1 w-[90px] pl-2 flex flex-col gap-3  absolute ml-[-90%] border border-b mt-[-20px]
     shadow-xl rounded-lg shadow-zinc-500 '>
-      <img onClick={()=>toggleLeftBar('1')} src={a1} width={70} height={40} alt="" />
-      <img onClick={()=>toggleLeftBar('2')} src={a2} width={70} height={40} alt="" />
-      <img onClick={()=>toggleLeftBar('3')} src={a3} width={70} height={40} className='mt-2' alt="" />
-    </div>
-   
-    {chat && !stories && !group ? (
+        <img onClick={() => toggleLeftBar('1')} src={a1} width={70} height={40} alt="" />
+        <img onClick={() => toggleLeftBar('2')} src={a2} width={70} height={40} alt="" />
+        <img onClick={() => toggleLeftBar('3')} src={a3} width={70} height={40} className='mt-2' alt="" />
+      </div>
+
+      {chat && !stories && !group ? (
         <>
-          <LeftUserDisplay />
-          <RightMessage />
+          <LeftUserDisplay userId={Authuser._id} />
+          {/* <RightMessage /> */}
+          {/* <RightMessage2/> */}
         </>
-      ) :stories && !chat && !group ? (
+      ) : stories && !chat && !group ? (
         <>
           <LeftStory />
           <RightStory />
         </>
-      ):group && !chat && !stories ? (
+      ) : group && !chat && !stories ? (
         <>
-      {/* {console.log(Authuser)} */}
-        <LeftGroup userId={Authuser._id}/>
+          {/* {console.log(Authuser)} */}
+          <LeftGroup userId={Authuser._id} />
         </>
-      ):null} 
-  </div>
+      ) : null}
+    </div>
   );
 };
 

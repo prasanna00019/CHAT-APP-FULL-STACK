@@ -131,10 +131,11 @@ export const deleteMessageForEveryone = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-    if (message.deletedForEveryone) {
+     if (!message.deletedForEveryone && decryptMessage(message.text,secretKey)==='DELETED FOR EVERYONE') {
       // If the message is already marked as deleted for everyone, remove it from the database
+      const m=await Message.findById(messageId);
+      m.deletedForEveryone=true;
       await Message.findByIdAndDelete(messageId);
-
       // Find the conversation that contains this message
       const conversation = await Conversation.findOne({ messages: messageId });
       if (conversation) {
@@ -142,23 +143,56 @@ export const deleteMessageForEveryone = async (req, res) => {
         conversation.messages.pull(messageId);
         await conversation.save();
       }
-    } else {
-      // Update the message to reflect that it's been deleted for everyone
+      res.status(200).json(m);
+    }
+    else {
       message.text = encryptMessage('DELETED FOR EVERYONE',secretKey);
-      message.deletedForEveryone = true;
+      message.deletedForEveryone = false;
       await message.save();
-
-      res.status(200).json({ message: 'Message marked as deleted for everyone' });
+      res.status(200).json(message);
       return;
     }
+    // if (message.deletedForEveryone) {
+    //   // If the message is already marked as deleted for everyone, remove it from the database
+    //   await Message.findByIdAndDelete(messageId);
 
-    res.status(200).json({ message: 'Message deleted for everyone' });
+    //   // Find the conversation that contains this message
+    //   const conversation = await Conversation.findOne({ messages: messageId });
+    //   if (conversation) {
+    //     // Remove the message ID from the conversation's messages array
+    //     conversation.messages.pull(messageId);
+    //     await conversation.save();
+    //   }
+    // } else {
+    //   // Update the message to reflect that it's been deleted for everyone
+    //   message.text = encryptMessage('DELETED FOR EVERYONE',secretKey);
+    //   message.deletedForEveryone = true;
+    //   await message.save();
+
+    //   res.status(200).json({ message: 'Message marked as deleted for everyone' });
+    //   return;
+    // }
+
+    // res.status(200).json({ message: 'Message deleted for everyone' });
 
   } catch (error) {
     console.error('Error in deleteMessageForEveryone controller:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+export const getMessageById=async(req,res)=>{
+  const { messageId } = req.params; // Extract message ID from request parameters
+try {
+  const message = await Message.findById(messageId) // Populate sender, receivers, and reply fields if needed
+  if (!message) {
+    return res.status(404).json({ message: 'Message not found' });
+  }
+  res.status(200).json(message); // Respond with the message data
+} catch (error) {
+  console.error('Error fetching message:', error);
+  res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
+}
+}
 export const deleteMessageForMe = async (req, res) => {
   const { messageId } = req.params; 
   const { userId } = req.params;
@@ -168,8 +202,8 @@ export const deleteMessageForMe = async (req, res) => {
     await Message.findByIdAndUpdate(messageId, {
       $addToSet: { deletedFor: userId } // Add userId to deletedFor array without duplicates
     });
-
-    res.status(200).json({ message: "Message deleted for you" });
+    const message = await Message.findById(messageId);
+    res.status(200).json(message);
   } catch (error) {
     console.error("Error deleting message for user:", error);
     res.status(500).json({ message: "Server error" });
@@ -179,6 +213,7 @@ export const editMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const { editedText } = req.body; // Updated message text
+    console.log(editedText, ' from server.js ... ')
   //  console.log(editedText);
     // Update the message's text and the editedAt timestamp
     await Message.findByIdAndUpdate(messageId, {
@@ -275,27 +310,19 @@ export const pinMessage = async (req, res) => {
 export const ReactMessage = async (req, res) => {
   const { messageId, userId } = req.params;
   const { r } = req.body; // 'r' is the reaction
-  console.log("message id in react message", messageId, userId, r);
   try {
     const message = await Message.findById(messageId);
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-
     const currentReactions = message.reactions || [];
-
     // Check if the user already has a reaction in the reactions array
     const existingReactionIndex = currentReactions.findIndex(
       reaction => reaction.userId.toString() === userId
     );
-    
-    console.log("existingReactionIndex", existingReactionIndex);
-    console.log(currentReactions, "current ");
-    
     if (existingReactionIndex > -1) {
       // User has already reacted
       const existingReaction = currentReactions[existingReactionIndex];
-
       if (existingReaction.r === r) {
         // If the reaction is the same, remove it (unreact)
         currentReactions.splice(existingReactionIndex, 1);
@@ -311,7 +338,7 @@ export const ReactMessage = async (req, res) => {
     // Update the message document with the new reactions array
     await Message.findByIdAndUpdate(messageId, { reactions: currentReactions });
 
-    return res.status(200).json({ message: 'Reactions updated', reactions: currentReactions });
+    return res.status(200).json(message);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Failed to react to message' });

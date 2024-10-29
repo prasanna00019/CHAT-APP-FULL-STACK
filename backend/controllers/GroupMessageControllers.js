@@ -50,6 +50,38 @@ export const sendMessageGroup = async (req, res) => {
       res.status(500).json({ error: "INTERNAL SERVER ERROR" });
     }
   };
+  export const ReactMessage = async (req, res) => {
+    const { messageId, userId } = req.params;
+    const { r } = req.body; // 'r' is the reaction
+    console.log("message id in react message", messageId, userId, r);
+    try {
+      const message = await GroupMessage.findById(messageId);
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+      const currentReactions = message.reactions || [];
+      // Check if the user already has a reaction in the reactions array
+      const existingReactionIndex = currentReactions.findIndex(
+        reaction => reaction.userId.toString() === userId
+      );
+      if (existingReactionIndex > -1) {
+        const existingReaction = currentReactions[existingReactionIndex];  
+        if (existingReaction.r === r) {
+          currentReactions.splice(existingReactionIndex, 1);
+        } else {
+          currentReactions[existingReactionIndex].r = r;
+        }
+      } else {
+        currentReactions.push({ userId, r });
+      }
+      // Update the message document with the new reactions array
+      await GroupMessage.findByIdAndUpdate(messageId, { reactions: currentReactions });
+      return res.status(200).json(message);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Failed to react to message' });
+    }
+  };
   export const changeGroupMessageStatusToDelivered = async (req, res) => {
     try {
       const { userId } = req.params; // Get userId from route parameter
@@ -90,86 +122,13 @@ export const sendMessageGroup = async (req, res) => {
           }
         }
       }
-  
       console.log(`Updated ${updatedCount} messages to delivered for user ${userId}`);
       res.status(200).json(messages);
-  
     } catch (error) {
       console.error("Error in updating group message status when user comes online:", error.message);
       res.status(500).json({ error: "INTERNAL SERVER ERROR" });
     }
   };
-
-  // export const changeGroupMessageStatusToDelivered = async (req, res) => {
-  //   try {
-  //     const { userId } = req.params; // Get userId from route parameter
-  
-  //     // Step 1: Get all groups the user is part of by checking participants
-  //     const groups = await Group.find({
-  //       participants: { $in: [new mongoose.Types.ObjectId(userId)] } // Check if userId is in participants
-  //     });
-  
-  //     if (groups.length === 0) {
-  //       return res.status(200).json({ message: 'User is not part of any groups.' });
-  //     }
-  
-  //     const groupIds = groups.map(group => group._id); // Extract group IDs
-  
-  //     // Step 2: Get all messages for the groups the user is part of
-  //     const messages = await GroupMessage.find({
-  //       group: { $in: groupIds },
-  //       'status.userId': userId,
-  //       'status.state': 'sent'
-  //     });
-  
-  //     if (messages.length === 0) {
-  //       return res.status(200).json({ message: 'No messages to update.' });
-  //     }
-  
-  //     // Step 3: Update the status of the messages to 'delivered' for the user
-  //     let updatedCount = 0;
-  //     const updatedMessages = [];
-  
-  //     for (const message of messages) {
-  //       // Update the status to 'delivered' for this specific user
-  //       message.status = message.status.map(entry => {
-  //         if (entry.userId.toString() === userId && entry.state === 'sent') {
-  //           entry.state = 'delivered';
-  //           entry.deliveredTime = Date.now();
-  //           updatedCount++;
-  //         }
-  //         return entry;
-  //       });
-  
-  //       // Save the updated message and keep track of it for later
-  //       await message.save();
-  //       updatedMessages.push(message); // Collect updated messages for emitting
-  //     }
-  
-  //     console.log(`Updated ${updatedCount} messages to delivered for user ${userId}`);
-  
-  //     // Step 4: Group messages by group ID for emitting updates
-  //     const groupedMessages = updatedMessages.reduce((groupsMap, message) => {
-  //       if (!groupsMap[message.group]) {
-  //         groupsMap[message.group] = [];
-  //       }
-  //       groupsMap[message.group].push(message);
-  //       return groupsMap;
-  //     }, {});
-  
-  //     // Step 5: Emit the updated messages to the relevant groups using socket
-  //     Object.keys(groupedMessages).forEach((groupId) => {
-  //       io.to(groupId).emit('updateMessages', groupedMessages[groupId]);
-  //     });
-  
-  //     res.status(200).json({ message: `Updated ${updatedCount} messages to delivered.`, updatedMessages });
-  
-  //   } catch (error) {
-  //     console.error("Error in updating group message status when user comes online:", error.message);
-  //     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
-  //   }
-  // };
-  
   export const getMessageById=async(req,res)=>{
     const { messageId } = req.params; // Extract message ID from request parameters
   try {
@@ -183,25 +142,6 @@ export const sendMessageGroup = async (req, res) => {
     res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
   }
   }
-  // export const deleteMessageById = async (req, res) => {
-  //   try {
-  //     const messageId = req.params.messageId; // assuming you're passing the message ID as a route parameter
-  //     const message = await GroupMessage.findByIdAndDelete(messageId);
-  //     if (!message) {
-  //       return res.status(404).json({ message: 'Message not found' });
-  //     }
-  //     const conversation = await Conversation.findOne({ messages: messageId });
-  //     if (conversation) {
-  //       // Remove the message ID from the conversation's messages array
-  //       conversation.messages.pull(messageId);
-  //       await conversation.save();
-  //     }
-  //     res.status(200).json({ message: 'Message deleted successfully' });
-  //   } catch (error) {
-  //     console.error(error);
-  //     res.status(500).json({ message: 'Error deleting message' });
-  //   }
-  // };
   export const deleteMessageById = async (req, res) => {
     try {
       const messageId = req.params.messageId; // assuming you're passing the message ID as a route parameter
@@ -221,13 +161,6 @@ export const sendMessageGroup = async (req, res) => {
         conversation.messages.pull(messageId);
         await conversation.save();
       }
-      const previousMessage = await GroupMessage.findOne({
-        conversationId: conversation._id,
-        sentAt: { $lt: m.sentAt },
-      })
-        .sort({ sentAt: -1 }) // Sort in descending order to get the most recent message before this one
-        .exec();
-        // console.log(previousMessage," from srk")
       res.status(200).json(m);
     }
     else {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import './DotsMenu.css'; // Optional: for custom styling
+import './DotsMenu.css'; 
 import { useNavigate } from 'react-router-dom';
 
 const DotsMenu = ({
@@ -10,7 +10,7 @@ const DotsMenu = ({
   searchBar, setSearchBar
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef(null); // Create a ref for the menu
+  const menuRef = useRef(null); 
 
   const toggleMenu = () => {
     setIsOpen((prev) => !prev);
@@ -20,20 +20,18 @@ const DotsMenu = ({
 
   const handleOptionClick = (option) => {
     console.log(`You clicked on ${option}`);
-    setIsOpen(false); // Close the menu after selecting an option
+    setIsOpen(false); 
   };
 
   const handleClickOutside = (event) => {
     if (menuRef.current && !menuRef.current.contains(event.target)) {
-      setIsOpen(false); // Close the menu if click is outside
+      setIsOpen(false);
     }
   };
 
   useEffect(() => {
-    // Add event listener for clicks outside the menu
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      // Clean up the event listener
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
@@ -45,8 +43,8 @@ const DotsMenu = ({
       </div>
       {isOpen && (
         <div ref={menuRef} className="options mt-[-30px] w-[140px]">
-          <div onClick={() => {  setShowPinnedMessages(!showPinnedMessages); }}>Pinned Messages</div>
-          <div onClick={() => {  setShowStarredMessages(!showStarredMessages); }}>Starred Messages</div>
+          <div onClick={() => { setShowPinnedMessages(!showPinnedMessages); }}>Pinned Messages</div>
+          <div onClick={() => { setShowStarredMessages(!showStarredMessages); }}>Starred Messages</div>
           <div onClick={() => { navigate('/user-profile'); }}>User Profile</div>
           <div onClick={() => { setSearchBar(!searchBar) }}>SEARCH</div>
         </div>

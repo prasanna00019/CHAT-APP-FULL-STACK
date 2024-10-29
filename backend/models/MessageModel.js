@@ -17,36 +17,37 @@ const messageSchema = new mongoose.Schema({
   },
   sentAt: {
     type: Date,
-    default: Date.now, // Sets the default to the current date and time
-    immutable: true, // This field won't be updated after creation
+    default: Date.now, 
+    immutable: true, 
   },
   editedAt: {
     type: Date,
-    default: null,  // Tracks when a message is edited
+    default: null, 
   },
   deletedForEveryone: {
     type: Boolean,
-    default: false,  // True if the message is deleted for everyone
+    default: false,  
   },
   deletedFor: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',  // Array of user IDs for whom the message is deleted
+    ref: 'User',  
   }],
   reactions: [{
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     r: { type: String },
   }],
-  pinned:{
-    type:Boolean,
-    default: false
-  },
-  starred:{
-    type:Boolean,
-    default: false
+  pinned: {
+    isPinned: {
+      type: Boolean,
+      default: false,
+    },
+    expiration: {
+      type: Date, 
+    }
   },
   reply: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Message', // Reference to the original message
+    ref: 'Message', 
   },
   status: {
     type: {

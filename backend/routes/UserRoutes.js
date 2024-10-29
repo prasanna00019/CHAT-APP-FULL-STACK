@@ -4,7 +4,7 @@ import { db } from "../utils/FireBase.js";
 import { getUserInfoByID, updateLastSeen, updateOnlineStatus, updateStatus } from "../controllers/UserControllers.js";
 import User from "../models/UserModel.js";
 const router = express.Router();
-router.get('/:userId',getUserInfoByID);
+router.get('/:userId', getUserInfoByID);
 router.get('/', async (req, res) => {
     try {
         // Fetch all users from the MongoDB collection
@@ -22,8 +22,8 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch users' });
     }
 });
-router.put('/showOnline/:userId',updateOnlineStatus);
+router.put('/showOnline/:userId', updateOnlineStatus);
 //Toggle last seen status from user Profile. 
-router.put('/showLastSeen/:userId',updateLastSeen);
-router.put('/updateStatus/:userId',updateStatus);
+router.put('/showLastSeen/:userId', updateLastSeen);
+router.put('/updateStatus/:userId', updateStatus);
 export default router;

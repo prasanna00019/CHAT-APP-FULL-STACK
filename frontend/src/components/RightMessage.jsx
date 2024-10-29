@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import './Toast.css'
-import dots from '../assets/dots.png';
 import dustbin from '../assets/dustbin.png';
 import pencil from '../assets/pencil.png';
 import copyIcon from '../assets/copy.png'
 import unpin from '../assets/push-pin.png';
 import pin from '../assets/pin.png';
 import reaction from '../assets/reaction (1).png'
-import MessageInput from './MessageInput';
 import { SocketContext } from '../context/SocketContext';
 import bluetick from '../assets/blue-double.png'
 import normaltick from '../assets/normal-double.png'
@@ -24,7 +22,6 @@ import red from '../assets/red.png'
 import { useStatusContext } from '../context/StatusContext';
 import MessageInfo from './MessageInfo';
 import DotsMenu from './DotsMenu';
-import TestComp from './TestComp';
 const RightMessage = () => {
   const { users, clickedId,setclickedId, Authuser } = useAuthContext();
   const [message, setMessage] = useState("");
@@ -88,23 +85,6 @@ const [searchResults, setSearchResults] = useState([]);
       setSearchResults([]);
     }
   },[searchTerm])
-  // const handleStarred=async(pinned)=>{
-  //   try{
-  //     const response=await fetch(`http://localhost:5000/message/starredMessages/${receiverId}/${Authuser._id}`,{
-  //       method:"GET",
-  //       headers:{
-  //         "Content-Type":"application/json"
-  //       }
-  //     })
-  //     if(!response.ok){
-  //       throw new Error("Failed to retrieve pinned messages");
-  //     }
-  //     const data=await response.json();
-  //     setPinnedMessages(data);
-  //   }catch(error){
-  //     console.error("Error retrieving pinned messages:", error);
-  //   }
-  // }
   const handleSearch = async (input) => {
     const conversationId='671000e4fd882638d545ef7e';
 
@@ -154,11 +134,9 @@ const [searchResults, setSearchResults] = useState([]);
       console.log(`User ${userId} is offline, last seen: ${lastSeen}`);
     });
     socket.on('typing', () => {
-      // console.log('User is typing...');
       setIsTyping(true);
     });
     socket.on('stop-typing', () => {
-      // console.log('User stopped typing...');
       setIsTyping(false);
     });
     return () => {
@@ -178,34 +156,14 @@ const [searchResults, setSearchResults] = useState([]);
             const messageId = entry.target.getAttribute('data-message-id');
             
             try {
-              // Fetch the senderId from the original API endpoint
-               
-              // const res = await fetch(`http://localhost:5000/message/get-senderId-from-messageId/${messageId}`, {
-              //   method: 'GET',
-              //   headers: {
-              //     'Content-Type': 'application/json',
-              //   },
-              // });
-  
-              // if (!res.ok) {
-              //   throw new Error('Failed to retrieve senderId');
-              // }
-  
-              // const data = await res.json();
               const senderId = entry.target.getAttribute('data-message-sender');
-            //  console.log('senderId:', senderId);
-              // Only update if not already marked as read and sender is not the authenticated user
               if (!readStatus[messageId] && senderId !== Authuser._id) {
-                // console.log('right message received componnt:');
-                // Make the API call to mark the message as read
                 await fetch(`http://localhost:5000/message/Message-read/${messageId}`, {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',
                   },
                 });
-  
-                // Update the readStatus state to reflect that the message has been marked as read
                 setReadStatus((prevStatus) => ({
                   ...prevStatus,
                   [messageId]: true,
@@ -219,12 +177,9 @@ const [searchResults, setSearchResults] = useState([]);
       },
       { threshold: 1.0 } // The threshold can be adjusted based on when you consider a message as "read"
     );
-  
-    // Observe each message
     messageRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
-  
     // Cleanup the observer on component unmount
     return () => {
       observer.disconnect(); // Disconnect the observer to avoid memory leaks
@@ -250,12 +205,10 @@ const [searchResults, setSearchResults] = useState([]);
           <strong>Sender:</strong> {result.sender} <br />
           <strong>Text:</strong> {highlightText(result.text, searchTerm)} <br />
           <strong>Sent At:</strong> {new Date(result.sentAt).toLocaleString()} <br />
-          {/* <strong>Status:</strong> {result.status.state} <br /> */}
         </p>
       </div>
     ));
   };
-  // console.log('he')
   const renderReply = (replyId) => {
     const originalMessage = messages.find((msg) => msg._id === replyId);
     const sender = originalMessage?.sender;
@@ -323,18 +276,16 @@ function decryptMessage(encryptedMessage, secretKey) {
 
   // Fetch messages between the current user and the selected user when the component mounts or clickedId changes
   useEffect(() => {
-    
     if (clickedId) {
-      
+      console.log('hello',clickedId);
       fetch(`http://localhost:5000/message/get/${Authuser._id}/${clickedId}`)
         .then((res) => res.json())
         .then((data) => {
           setMessages(data);
-          
         })
         .catch((error) => console.error("Error fetching messages:", error));
     }
-  }, [Authuser,socket,clickedId,messages]);
+  }, [Authuser  ,clickedId]);
   // Get starred messages
 
 // console.log("pinnedMessages",pinnedMessages)
@@ -383,11 +334,8 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
        if (!res.ok) {
         throw new Error('Failed to retrieve delivery and read time');
       }
-  
       const data = await res.json();
-      // const { deliveredTime, readTime } = data;
       setMessageInfo({ deliveredTime: data.deliveredTime, readTime: data.readTime });
-      // console.log("deliveredTime and readTime: ", deliveredTime, readTime);
       return { deliveredTime, readTime };
      }
      catch( error) {  
@@ -409,7 +357,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     });
 
     if (res.ok) {
-      setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== messageId));
+      setMessages((prevMessages) => prevMessages?.filter((msg) => msg._id !== messageId));
       toast.success(  `MESSAGE DELETED FOR ME`,{
         style:customTheme
        });   
@@ -466,12 +414,10 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         part
       )
     );
-  }
-    
+  } 
   const handleEditMessage = (messageId, currentText) => {
     setEditingMessageId(messageId);
     setEditedText(currentText);
-
   };
   // Function to submit edited message
   const handleSubmitEdit = async (messageId) => {
@@ -499,15 +445,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       })
     }
   };
-
   // Function to cancel editing
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditedText('');
   };
-  // useEffect(() => {
     const updateStarredStatus = async (id) => {
-      // console.log("message with id: ",id);
     setStarred(!starred);
         const res = await fetch(`http://localhost:5000/message/starred/${id}`, {
           method: 'PUT', // Use PATCH to update a resource
@@ -521,14 +464,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
            style:customErrorTheme
           })
         }  
-        
         else{
           toast.success(`${starred ? 'MESSAGE UNSTARRED' : 'MESSAGE STARRED'}`, {
            style:customTheme,
           });    
         }
     };
-    
     const updatePinnedStatus = async (id) => {
       console.log("message with id in pinned : ",id);
     setPinned(!pinned);
@@ -606,7 +547,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
                 <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
 
       {
-        messages.filter((msg) => msg.pinned).map((msg) => (
+        messages?.filter((msg) => msg.pinned).map((msg) => (
           <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="pinned-message bg-zinc-100">
             <p>
               <strong>Sender:</strong> {msg.sender} <br />
@@ -622,13 +563,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     const starredResultsDiv=(
       <div className="starred-results border border-gray-800 p-2">
         <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
-      {messages.filter((msg) => msg.starred).map((msg) => (
+      {messages?.filter((msg) => msg.starred).map((msg) => (
       <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="starred-message bg-zinc-100">
         <p>
           <strong>Sender:</strong> {msg.sender} <br />
           <strong>Text:</strong> {decryptMessage(msg.text,secretKey)} <br />
           <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
-          {/* <strong>Status:</strong> {msg.status.state} <br /> */}
         </p>
       </div>
     ))}
@@ -642,11 +582,10 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
         {userInfo ? (
           <div   className='border border-gray-300 p-2 w-[100%] h-[80px] rounded-2xl bg-green-300 flex gap-5 justify-between'>
             <div className='flex flex-col gap-1'>
-            <p className='font-bold text-3xl'>{userInfo.username.toUpperCase()}  {isTyping && <div>is typing...</div>}</p>
+            <p className='font-bold text-3xl'>{userInfo?.username?.toUpperCase()}  {isTyping && <div>is typing...</div>}</p>
             <p>
                {userInfo.online?`Online`:userInfo.ShowLastSeen?`Last seen ${userInfo.lastSeen}`:``}
               </p>
-            {/* {console.log(userInfo.ShowLastSeen, userInfo.lastSeen)} */}
             </div>
        { searchBar &&  
             <div className="search-bar flex flex-col">
@@ -659,11 +598,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
      }}
   />
   <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
-  {/* <p onClick={()=>setShowPinnedMessages(!showPinnedMessages)} >showPinned </p> */}
-  {/* <p onClick={()=>setShowStarredMessages(!showStarredMessages) */}
-  {/* // }>showStarred</p> */}
 </div>}
-            {/* <img src={dots} alt="" height={20} width={50} /> */}
             <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
             } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}/>
           

@@ -2,23 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-*{
-    margin: 0;
-    padding: 0;
+* {
+  margin: 0;
+  padding: 0;
 }
+
 .custom-toast {
   font-size: 18px;
   font-weight: bold;
   padding: 16px;
   border-radius: 10px;
-  background-color:blue;
+  background-color: blue;
   color: #fff;
-  box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
 }
+
 .highlight {
   background-color: yellow;
   transition: background-color 0.5s ease;
 }
+
 .scroll-to-bottom-button {
   position: fixed;
   bottom: 20px;
@@ -36,10 +39,12 @@
 .scroll-to-bottom-button:hover {
   background-color: #0056b3;
 }
+
 .highlight {
   background-color: yellow;
   font-weight: bold;
 }
+
 .highlight {
   background-color: yellow;
   font-weight: bold;

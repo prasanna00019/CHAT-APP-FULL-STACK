@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Login from './pages/Login';
@@ -8,21 +8,43 @@ import ResetPassword from './pages/ResetPassword';
 import UserProfile from './components/UserProfile';
 import { useAuthContext } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import LoadingScreen from './components/LoadingScreen';
 function App() {
-  const {Authuser}=useAuthContext();
-  // console.log(Authuser," from App.jsx");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFading, setIsFading] = useState(false);
+  useEffect(() => {
+    // Start loading process
+    const loadTimer = setTimeout(() => {
+      setIsFading(true); // Trigger the fade-out effect
+    }, 4000);
+
+    // Remove loading screen after fade-out
+    const fadeTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3500); // Adjust to match transition duration
+
+    // Clean up timers
+    return () => {
+      clearTimeout(loadTimer);
+      clearTimeout(fadeTimer);
+    };
+  }, []);
+  const { Authuser } = useAuthContext();
   return (
     <div className='p-4 h-screen flex items-center justify-center'>
-      <Routes>
-      <Route path='/' element={Authuser?<Home/>:<Navigate to={'/login'}/>}/>
-      <Route path='/login' element={Authuser?<Navigate to='/'/>:<Login/>}/>
-      <Route path='/signup' element={Authuser?<Navigate to='/'/>:<Signup/>}/>
-      <Route path='/reset-password' element={<ResetPassword />} />
-      <Route path='/user-profile' element={<UserProfile/>}/>
+      
+      {isLoading ? <LoadingScreen isFading={isFading} /> :  
+       <>
+     <Routes>
+        <Route path='/' element={Authuser ? <Home /> : <Navigate to={'/login'} />} />
+        <Route path='/login' element={Authuser ? <Navigate to='/' /> : <Login />} />
+        <Route path='/signup' element={Authuser ? <Navigate to={'/login'} /> : <Signup />} />
+        <Route path='/reset-password' element={<ResetPassword />} />
+        <Route path='/user-profile' element={<UserProfile />} />
       </Routes>
-      <Toaster/>
+      <Toaster /> </>}
+      
     </div>
   );
 }
-
 export default App;

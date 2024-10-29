@@ -1,43 +1,43 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import {updateDoc, doc, getDoc } from 'firebase/firestore'; 
+import { updateDoc, doc, getDoc } from 'firebase/firestore';
 import { useAuthContext } from '../context/AuthContext';
 import { db, storage } from '../../../backend/utils/FireBase';
 import toast from 'react-hot-toast';
 // import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Link } from 'react-router-dom';
 import user_empty from '../assets/user_empty.png';
-import { ref, uploadBytesResumable, getDownloadURL,deleteObject} from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 const UserProfile = () => {
   const { Authuser } = useAuthContext();
 
   const [userDetails, setUserDetails] = useState(null);
   const [showOnline, setShowOnline] = useState(false);
   const [showLastSeen, setShowLastSeen] = useState(false);
-  const [themeImage, setThemeImage] = useState(null); 
-  const customTheme={
+  const [themeImage, setThemeImage] = useState(null);
+  const customTheme = {
     fontSize: '18px', // font size
-fontWeight: 'bold', // font weight
-padding: '16px', // padding
-borderRadius: '10px', // border radius
-backgroundColor: 'blue', // background color
-color: '#fff', // text color
-boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
-}
-const customErrorTheme={
-  fontSize: '18px', // font size
-fontWeight: 'bold', // font weight
-padding: '16px', // padding
-borderRadius: '10px', // border radius
-backgroundColor: 'red', // background color
-color: '#fff', // text color
-boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
-}
- const handleProfilePhotoChange = async (e) => {
+    fontWeight: 'bold', // font weight
+    padding: '16px', // padding
+    borderRadius: '10px', // border radius
+    backgroundColor: 'blue', // background color
+    color: '#fff', // text color
+    boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
+  }
+  const customErrorTheme = {
+    fontSize: '18px', // font size
+    fontWeight: 'bold', // font weight
+    padding: '16px', // padding
+    borderRadius: '10px', // border radius
+    backgroundColor: 'red', // background color
+    color: '#fff', // text color
+    boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
+  }
+  const handleProfilePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Create a new file name (e.g., with a timestamp)
-    const newFileName = `${Authuser}.png`;  
+    const newFileName = `${Authuser}.png`;
     const storageRef = ref(storage, `profilePhotos/${newFileName}`);
 
     // Upload the file
@@ -55,7 +55,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       async () => {
         // Get the download URL
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        
+
         // Update the profile picture URL in Firestore
         try {
           const userRef = doc(db, 'users', Authuser);
@@ -79,7 +79,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     if (firebaseTimestamp && firebaseTimestamp.seconds) {
       // Convert the Firestore timestamp to milliseconds
       const date = new Date(firebaseTimestamp.seconds * 1000);
-      
+
       // Format the date to a readable string
       return date.toLocaleString('en-US', {
         timeZone: 'UTC',
@@ -94,12 +94,12 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       return "Invalid Timestamp";
     }
   }
-  
+
   useEffect(() => {
     const fetchUserDetails = async () => {
       const userRef = doc(db, 'users', Authuser);
       const userSnapshot = await getDoc(userRef);
-      
+
       if (userSnapshot.exists()) {
         const data = userSnapshot.data();
         setUserDetails(data);
@@ -112,10 +112,10 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
 
     fetchUserDetails();
   }, [Authuser]);
-  
+
   const deleteFile = async (filePath) => {
     const fileRef = ref(storage, filePath); // File path in Firebase Storage
-  
+
     try {
       await deleteObject(fileRef);
       console.log('File deleted successfully');
@@ -123,7 +123,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       console.error('Failed to delete file:', error);
     }
   };
-  
+
   const handleThemeUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -160,8 +160,8 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
     <div className="user-profile flex flex-col gap-5">
       <h3>BACK TO CHAT</h3>
       <h1>User Profile</h1>
- {/* Profile image with onClick to trigger file input */}
- <img
+      {/* Profile image with onClick to trigger file input */}
+      <img
         src={userDetails.profilePic || user_empty}
         width={50}
         className="m-auto cursor-pointer"
@@ -208,7 +208,7 @@ boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
       <div>
         <h3>Upload Chat Theme</h3>
         <input type="file" accept="image/*" onChange={handleThemeUpload} />
-        {themeImage && <img src={themeImage} alt="Uploaded Theme" style={{ maxWidth: '50%',margin:'auto', marginTop: '20px' }} />}
+        {themeImage && <img src={themeImage} alt="Uploaded Theme" style={{ maxWidth: '50%', margin: 'auto', marginTop: '20px' }} />}
       </div>
       <button onClick={() => deleteFile(`chatThemes/${Authuser}.png`)}>DELETE CURRENT CHAT IMAGE</button>
     </div>

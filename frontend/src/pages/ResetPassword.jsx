@@ -1,24 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate,Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import toast from 'react-hot-toast';
 import { auth } from '../../../backend/utils/FireBase';
-
 const ResetPassword = () => {
   const [email, setEmail] = useState('');
-  const navigate = useNavigate(); // Hook for navigation
-
+  const navigate = useNavigate(); 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     try {
-      await sendPasswordResetEmail(auth, email); // Firebase function to send reset link
+      await sendPasswordResetEmail(auth, email); 
       toast.success('Reset link sent! Check your email.');
-      navigate('/login'); // Navigate to login page after sending the reset link
+      navigate('/login');
     } catch (error) {
       toast.error('Failed to send reset link. Please try again.');
     }
   };
-
   return (
     <div className='flex flex-col items-center justify-center min-w-96 mx-auto'>
       <div className='w-full p-6 bg-white-800 rounded-lg shadow-md bg-blue-200 bg-clip-padding backdrop-filter backdrop-blur-xl bg-opacity-70 border border-gray-100'>
@@ -49,5 +46,4 @@ const ResetPassword = () => {
     </div>
   );
 };
-
 export default ResetPassword;

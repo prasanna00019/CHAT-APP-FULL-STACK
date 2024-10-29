@@ -1,29 +1,24 @@
-/* DotsMenu.css */
 .dots-menu {
-    position: relative; /* This allows the options div to position correctly */
+    position: relative;
 }
-
 .dots {
     cursor: pointer;
-    font-size: 24px; /* Adjust size as needed */
+    font-size: 24px;
 }
-
 .options {
     position: absolute;
-    top: 100%; /* Position below the dots */
-    right: 0; /* Align to the right */
+    top: 100%;
+    right: 0;
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 1000; /* Ensure it's above other content */
+    z-index: 1000;
 }
-
 .options div {
-    padding: 10px 15px; /* Spacing for options */
+    padding: 10px 15px;
     cursor: pointer;
 }
-
 .options div:hover {
-    background-color: #f0f0f0; /* Highlight on hover */
+    background-color: #f0f0f0;
 }

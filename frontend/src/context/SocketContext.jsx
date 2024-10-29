@@ -31,12 +31,12 @@ export const SocketProvider = ({ children }) => {
     });
   
     socket.on('typing', (userId) => {
-      console.log(`${userId} is typing...`);
+      // console.log(`${userId} is typing...`);
       // Update the UI to show the typing status
     });
   
     socket.on('stop-typing', (userId) => {
-      console.log(`${userId} stopped typing`);
+      // console.log(`${userId} stopped typing`);
       // Update the UI to remove the typing status
     });
 

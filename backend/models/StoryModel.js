@@ -5,7 +5,7 @@ const StorySchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  username:{
+  username: {
     type: String,
     required: true,
   },
@@ -19,7 +19,7 @@ const StorySchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now // Automatically deletes the story after 24 hours (86400 seconds)
+    default: Date.now 
   },
   visibility: {
     type: [
@@ -28,7 +28,7 @@ const StorySchema = new mongoose.Schema({
         ref: 'User',
       },
     ],
-    default: [], // List of user IDs who can view the story
+    default: [], 
   },
   viewers: [
     {
@@ -49,7 +49,7 @@ const StorySchema = new mongoose.Schema({
         ref: 'User',
       },
     },
-    
+
   ]
   ,
 });

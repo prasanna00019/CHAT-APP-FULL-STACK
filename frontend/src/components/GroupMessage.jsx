@@ -14,6 +14,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField'; // For editing message text
 import reply from '../assets/reply.png'
+import reaction from '../assets/reaction (1).png'
 import { Modal} from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
 const GroupMessage =forwardRef((props,ref) => {
@@ -28,6 +29,7 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
   const [editText, setEditText] = useState(''); // State for edited message text
   const [deleteOption, setDeleteOption] = useState('forMe'); // Track selected delete option
   const [currentUser, setCurrentUser] = useState(null);
+  const [openReaction, setOpenReaction] = useState(false);
   // Open and close modals handlers
   const handlePinClick = () =>setIsPinDialogOpen(true);
   
@@ -105,7 +107,17 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
     setShowEditModal(true);
   };
   const closeEditModal = () => setShowEditModal(false);
+  const handleClickOpen = () => {
+    setOpenReaction(true);
+  };
 
+  const handleClose = () => {
+    setOpenReaction(false);
+  };
+  const handleEmojiClick = (emoji) => {
+    console.log(`Selected emoji: ${emoji}`);
+    setOpenReaction(false); // Close the dialog after selecting an emoji
+  };
   // Handle the edit action
   const handleEdit = () => {
     socket.emit('editMessageGroup', { messageId: message._id, groupId: message.group, newText: editText });
@@ -149,9 +161,12 @@ return ()=>{
   socket.off('messageStarredGroup')
 }
   },[socket])
+  const handleEmojiSubmit=(emoji,messageId,userId,groupId)=>{
+    socket.emit('AddReactionGroup',{emoji,messageId,userId,groupId});
+  }
+  const emojiList = ["😊", "😂", "😍", "❤", "✨", "😇", "👏", "💛", "🥹", "😞", "🫶", "💥", "👍"];
   const allDelivered = currentMessage?.status?.every(status => status.state === 'delivered');
   const tickIcon = allDelivered ? '✅' : '✖️';
-
   return (
     <>
       {
@@ -182,8 +197,33 @@ return ()=>{
           <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id,userId)}>
             {currentUser?.starredMessages?.includes(message._id) ? 'UNSTAR' : 'STAR'}
           </button>
+          <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
+          {
+            message?.reactions?.map(reaction => (
+           <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
+                ))
+           }
           <img src={info} width={20} alt="" />
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
+           <Dialog open={openReaction} onClose={handleClose}>
+      <DialogTitle>Select an Emoji Reaction</DialogTitle>
+      <DialogContent>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px' }}>
+          {emojiList.map((emoji) => (
+            <span className='w-5'
+              key={emoji}
+              onClick={() => {
+                // console.log(emoji,message._id,userId,'clicked')
+                 handleEmojiSubmit(emoji,message._id,userId,message.group);
+                 handleClose()
+              }}
+            >
+              {emoji}
+            </span>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
           {/* Delete Modal */}
           <Dialog open={showModal} onClose={closeDeleteModal}>
             <DialogTitle>Delete message?</DialogTitle>
@@ -253,74 +293,3 @@ return ()=>{
 });
 
 export default GroupMessage;
-
-// import React, { useState } from 'react';
-// // import { updateGroupMessagePin } from './api'; // function to update pin in DB
-// import { Modal ,Button,Radio,RadioGroup,FormControlLabel} from '@mui/material';
-// const GroupMessage = ({ message }) => {
-//   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
-//   const [pinDuration, setPinDuration] = useState(''); // e.g., "24 hours", "7 days"
-
-//   // Open or close the dialog
-//   const handlePinClick = () => setIsPinDialogOpen(true);
-//   const handleCloseDialog = () => setIsPinDialogOpen(false);
-
-//   // Set the selected pin duration
-//   const handleDurationChange = (event) => setPinDuration(event.target.value);
-
-//   // Function to handle pinning the message
-//   const handlePinMessage = async () => {
-//     let expirationTime;
-//     const now = new Date();
-
-//     // Calculate expiration time based on selected duration
-//     switch (pinDuration) {
-//       case '24 hours':
-//         expirationTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-//         break;
-//       case '7 days':
-//         expirationTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-//         break;
-//       case '30 days':
-//         expirationTime = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-//         break;
-//       default:
-//         return;
-//     }
-
-//     // Update pinned status in the database
-//     await updateGroupMessagePin(message._id, {
-//       pinned: true,
-//       expiration: expirationTime
-//     });
-
-//     // Close the dialog after pinning
-//     setIsPinDialogOpen(false);
-//   };
-
-//   return (
-//     <div>
-//       {/* Display the message content */}
-//       <p>{message.content}</p>
-
-//       {/* Pin button */}
-//       <Button onClick={handlePinClick}>Pin Message</Button>
-
-//       {/* Pin Duration Selection Dialog */}
-//       <Modal open={isPinDialogOpen} onClose={handleCloseDialog}>
-//         <div style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
-//           <h3>Choose how long your pin lasts</h3>
-//           <RadioGroup value={pinDuration} onChange={handleDurationChange}>
-//             <FormControlLabel value="24 hours" control={<Radio />} label="24 hours" />
-//             <FormControlLabel value="7 days" control={<Radio />} label="7 days" />
-//             <FormControlLabel value="30 days" control={<Radio />} label="30 days" />
-//           </RadioGroup>
-//           <Button onClick={handlePinMessage} color="primary">Pin</Button>
-//           <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
-//         </div>
-//       </Modal>
-//     </div>
-//   );
-// };
-
-// export default GroupMessage;

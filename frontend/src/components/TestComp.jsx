@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-
-// Dummy data for usernames
 const allUsernames = ['john_doe', 'jane_smith', 'admin', 'superuser', 'test_user'];
-
 function TestComp() {
   const [inputValue, setInputValue] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredUsernames, setFilteredUsernames] = useState([]);
-
   const handleInputChange = (e) => {
     const value = e.target.value;
     setInputValue(value);
-
     // Show dropdown when "@" is detected followed by some characters
     const lastAtIndex = value.lastIndexOf('@');
     if (lastAtIndex !== -1) {
@@ -29,15 +24,12 @@ function TestComp() {
       setShowDropdown(false);
     }
   };
-
   const handleUsernameSelect = (username) => {
-    // Replace the "@" term in the input with the selected username
     const lastAtIndex = inputValue.lastIndexOf('@');
     const newValue = inputValue.slice(0, lastAtIndex + 1) + username + ' ';
     setInputValue(newValue);
     setShowDropdown(false);
   };
-
   return (
     <div>
       <input
@@ -76,5 +68,4 @@ function TestComp() {
     </div>
   );
 }
-
 export default TestComp;
