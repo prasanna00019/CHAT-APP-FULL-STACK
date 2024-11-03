@@ -1,6 +1,7 @@
 import React from 'react'
 import GreenHeart from '../assets/heart-green.png';
-const Viewers = ({ viewers, isLikedByUser }) => {
+import reply from '../assets/reply.png';
+const Viewers = ({ viewers, isLikedByUser ,NumLikes}) => {
   return (
     <ul>
       {viewers?.length > 0 ? viewers.map((viewer) => (
@@ -9,7 +10,7 @@ const Viewers = ({ viewers, isLikedByUser }) => {
             <span>{viewer.userId}</span>
             <span> {new Date(viewer.viewedAt).toLocaleString()}</span>
           </div>
-          <img src={isLikedByUser ? GreenHeart : ""} width={50} height={10} alt="" />
+          <img src={NumLikes ? GreenHeart : ''} width={50} height={10} alt="" />
         </li>
       )) : "No Viewers"}
 

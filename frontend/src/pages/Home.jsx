@@ -10,11 +10,12 @@ import RightStory from '../components/RightStory';
 import { useAuthContext } from '../context/AuthContext';
 import LeftGroup from '../components/LeftGroup';
 import RightMessage2 from '../components/RightMessage2';
+import ChatLock from '../components/ChatLock';
 const Home = () => {
   const { Authuser, setAuthuser } = useAuthContext();
-  const [chat, setChat] = useState(true);
+  const [chat, setChat] = useState(false);
   const [group, setgroup] = useState(false);
-  const [stories, setStories] = useState(false);
+  const [stories, setStories] = useState(true);
   useEffect(() => {
     setAuthuser(Authuser);
   }, [Home, LeftUserDisplay, RightMessage])
@@ -52,7 +53,7 @@ const Home = () => {
         </>
       ) : stories && !chat && !group ? (
         <>
-          <LeftStory />
+          <LeftStory  userId={Authuser._id}/>
           <RightStory />
         </>
       ) : group && !chat && !stories ? (
@@ -60,7 +61,7 @@ const Home = () => {
           {/* {console.log(Authuser)} */}
           <LeftGroup userId={Authuser._id} />
         </>
-      ) : null}
+      ) : <ChatLock/>}
     </div>
   );
 };

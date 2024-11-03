@@ -6,15 +6,26 @@ import GroupMessage from './GroupMessage';
 import info from '../assets/information.png';
 import { useAuthContext } from '../context/AuthContext';
 import { useStatusContext } from '../context/StatusContext';
-
+import wallpaper from '../assets/wallpaper2.jpeg'
+import DotsMenu from './DotsMenu';
+import MessageInfo from './MessageInfo';
+import useLogout from '../hooks/useLogout';
+import { decryptMessage, encryptMessage } from '../helper_functions';
 const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMessage, setlastMessage }) => {
   const { socket } = useContext(SocketContext) // Replace with your backend URL
   const [currentGroupInfo, setCurrentGroupInfo] = useState(null);
   const { messages, setMessages } = useStatusContext();
   const typingTimeout = useRef(null);
+  const{GROUP_CHAT_SECRET_KEY}=useLogout();
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
   const messageRefs = useRef([]); // References to message elements
-  const { userMap } = useAuthContext();
+  const { userMap,Authuser } = useAuthContext();
+  const [showMessageInfo, setShowMessageInfo] = useState(null);
+  const [searchBar,setSearchBar]=useState(false)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+  const [showStarredMessages, setShowStarredMessages] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
   // console.log(userMap)
   const [replyingTo, setReplyingTo] = useState(null);
   const [newMessage, setNewMessage] = useState('');
@@ -29,6 +40,57 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   useEffect(() => {
 
   }, [])
+  const pinnedResultsDiv=(
+    <div className="pinned-results border border-gray-900 p-2">
+              <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
+
+    {
+      messages?.filter((msg) => msg.pinned.isPinned).map((msg) => (
+        <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="pinned-message bg-zinc-100 mb-2">
+          <p>
+            <strong>Sender:</strong> {userMap[msg.sender]} <br />
+            <strong>Text:</strong> {decryptMessage(msg.text, GROUP_CHAT_SECRET_KEY)} <br />
+            <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+          </p>
+        </div>
+      ))
+    }
+  </div>
+  );
+  const highlightText = (text, term) => {
+    if (!term) return text;
+    const regex = new RegExp(`(${term})`, "gi");
+    return text.split(regex).map((part, index) =>
+      part.toLowerCase() === term.toLowerCase() ? (
+        <span key={index} className="highlight">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
+  const renderSearchResults = () => { 
+    if (searchResults.length === 0) {
+      return <p>No results found</p>;
+    }
+    return searchResults?.map((result) => (
+      <div key={result._id} className="search-result hover:cursor-pointer bg-zinc-200"  onClick={()=>scrollToMessage(result._id)} >
+        <p>
+          <strong>Sender:</strong> {userMap[result.sender]} <br />
+          {console.log(result.text)}
+          <strong>Text:</strong> {highlightText(result.text, searchTerm)} <br />
+          <strong>Sent At:</strong> {new Date(result.sentAt).toLocaleString()} <br />
+        </p>
+      </div>
+    ));
+  };
+  const searchResultsDiv=(
+    <div className="search-results">
+    {searchTerm && 
+    renderSearchResults()}
+  </div>
+  );
   // Establish socket connection and join the group when clickedGroupId changes
   useEffect(() => {
     if (clickedGroupId) {
@@ -65,7 +127,39 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
       fetchMessages();
     }
   }, [clickedGroupId]);
-
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // console.log(entries)
+        entries.forEach(async (entry) => {
+          // console.log(entry)
+          if (entry.isIntersecting) {
+            console.log(entry.isIntersecting);
+            const messageId = entry.target.getAttribute('data-message-id');
+             console.log(messageId)
+            try {
+              const senderId = entry.target.getAttribute('data-message-sender');
+              console.log(senderId)
+              if ( senderId !== Authuser._id) {
+                 console.log('Reading message:', messageId);
+                 socket.emit('ReadMessageGroup', {messageId,senderId,readingUserId:userId});
+              }
+            } catch (err) {
+              console.error('Error processing message read:', err);
+            }
+          }
+        });
+      },
+      { threshold: 1.0 } // The threshold can be adjusted based on when you consider a message as "read"
+    );
+    messageRefs.current.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+    // Cleanup the observer on component unmount
+    return () => {
+      observer.disconnect(); // Disconnect the observer to avoid memory leaks
+    };
+  }, [messages]);
   // Listen for new messages from the server
   useEffect(() => {
     socket.on('receiveMessage', (messageData) => {
@@ -135,6 +229,25 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     };
   }, [socket]);
   // Handle sending new message
+  const starredResultsDiv = (
+    <div className="starred-results border border-gray-800 p-2">
+      <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
+      {messages
+        ?.filter(msg => 
+          Authuser?.starredMessages?.includes(msg._id) // Check if the message is starred and exists in starredMessages
+        )
+        .map(msg => (
+          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="starred-message bg-zinc-100 p-2 mb-2 rounded">
+            <p>
+              <strong>Sender:</strong> {userMap[ msg.sender]} <br />
+              <strong>Text:</strong> {decryptMessage(msg.text, GROUP_CHAT_SECRET_KEY)} <br />
+              <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+            </p>
+          </div>
+        ))
+      }
+    </div>
+  );
   const handleTyping = () => {
     if (!currentGroupInfo) return;
     // Emit 'typingGroup' event when typing starts
@@ -156,7 +269,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     if (newMessage.trim() === '') return;
     console.log(currentGroupInfo)
     const messageData = {
-      text: newMessage,
+      text: encryptMessage(newMessage, GROUP_CHAT_SECRET_KEY),
       conversationId: currentGroupInfo.conversationId,
       receivers: currentGroupInfo.participants.filter(
         (participant) => participant !== userId),
@@ -168,25 +281,78 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     socket.emit('sendMessageGroup', messageData);
     setNewMessage('');
   };
+  const scrollToMessage = (messageId) => {
+    // Find the index of the message with the given messageId
+    const index = messages.findIndex((msg) => msg._id === messageId);
+    
+    // If the index is found and a corresponding reference exists
+    if (index !== -1 && messageRefs.current[index]) {
+      messageRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+      // Optionally, add a visual highlight to indicate focus
+      messageRefs.current[index].classList.add('highlight');
+      setTimeout(() => {
+        messageRefs.current[index].classList.remove('highlight');
+      }, 2000); // Remove the highlight after 2 seconds
+    }
+  }; 
+ 
+  const handleSearch = async (input) => {
+    const conversationId='671a2875ad18f8647ebc541b';
+
+    try {
+      const response = await fetch("http://localhost:5000/group/search/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ conversationId, searchTerm: input }),
+      });
+      
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error("Error searching messages:", error);
+    }
+  };  
   return (
-    <div className='bg-white h-fit min-w-[740px] shadow-xl shadow-green-300
-    rounded-lg  mr-[300px] border border-black flex flex-col'>
+  //  <div className='flex gap-3 min-w-[780px]'>
+    <div className='bg-white h-full min-w-[760px] shadow-xl shadow-green-300
+    rounded-3xl  mr-[300px]  flex ' style={{backgroundImage: `url(${wallpaper})`}}>
+      <div className='min-w-[760px]'>
       {/* Group Info */}
       {currentGroupInfo ? (
-        <div className="p-4 border border-blue-500 bg-yellow-200">
+        <div className="p-4 border border-blue-500 rounded-br-3xl rounded-tr-3xl  bg-yellow-400">
           <h2>{currentGroupInfo.name}</h2>
-          <p>
+         <div className='flex gap-3 justify-evenly mt-3'>
+         { searchBar &&  
+            <div className="search-bar flex flex-col">
+  <input
+    type="text"
+    placeholder="Search messages..."
+    value={searchTerm}
+    onChange={(e) =>{ setSearchTerm(e.target.value); 
+      handleSearch(e.target.value);
+     }}
+  />
+  <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
+</div>}
+      <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
+            } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}
+            IsGroupInfo={true} groupId= {currentGroupInfo._id} />
+          <div>
             {currentGroupInfo.participants.map((participant, index) => (
               <span className="bg-zinc-200 p-2 " key={index}>
                 {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
                 {index < currentGroupInfo.participants.length - 1 ? ', ' : ''}
               </span>
 
-            ))
-            }
-            <img src={info} width={20} alt="" className='float-right' onClick={openInfoModal} />
+               ))
+              }
+              { <img src={info} width={30} onClick={()=>{openInfoModal()}} alt="" /> }
             {isTyping && <p className=' mt-2 text-green-800'>{userMap[currentTypingUser]} is typing...</p>}
-          </p>
+          </div>
+</div> 
         </div>
       ) : (
         "No Group Selected"
@@ -205,20 +371,22 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
         ) : (
           messages.map((msg, index) => (
             <GroupMessage ref={(el) => (messageRefs.current[index] = el)} onClick={() => console.log(msg._id, " from rightour")} key={index} message={msg}
-              setMessages={setMessages} messages={messages} userId={userId} replyingTo={replyingTo} setReplyingTo={setReplyingTo}
-              messageRefs={messageRefs}
+            setMessages={setMessages} messages={messages} userId={userId} replyingTo={replyingTo} setReplyingTo={setReplyingTo}
+            messageRefs={messageRefs} setShowMessageInfo={setShowMessageInfo} showMessageInfo={showMessageInfo}
+            dataMessageId={msg._id}  
+            dataMessageSender={msg.group}
             />
           ))
         )}
       </div>
-      <div className="p-4 border-t flex flex-col">
+      <div className="p-4 border-t flex flex-col mt-10">
         {replyingTo && (
           <div className="reply-preview h-[20%] w-[100%]  bg-green-500 border border-black border-y-8 font-bold ">
-            <p>Replying to: {messages.find((msg) => msg._id === replyingTo)?.text}</p>
+            <p>Replying to: {decryptMessage(messages.find((msg) => msg._id === replyingTo)?.text,GROUP_CHAT_SECRET_KEY)}</p>
             <button className='hover:cursor-pointer' onClick={cancelReply}>Cancel</button>
           </div>
         )}
-        <TextField
+        <TextField 
           label="Type your message..."
           fullWidth
           value={newMessage}
@@ -228,7 +396,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
               handleSendMessage();
             }
           }}
-        />
+          />
         <Button onClick={handleSendMessage} variant="contained" color="primary">
           Send
         </Button>
@@ -274,8 +442,17 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
           </DialogActions>
         </Dialog>
       </div>
-
+      </div>
+      {
+        (showPinnedMessages || showStarredMessages || showMessageInfo!==null || searchTerm!=='') && 
+        <MessageInfo showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} showMessageInfo={showMessageInfo} searchTerm={searchTerm} 
+        setShowPinnedMessages={setShowPinnedMessages} setShowStarredMessages={setShowStarredMessages} setShowMessageInfo={setShowMessageInfo} setSearchTerm={setSearchTerm}
+        IsGroupInfo={true} 
+        searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages}
+        />
+      }
     </div>
+      // </div> 
   );
 };
 

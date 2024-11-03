@@ -1,18 +1,21 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { updateDoc, doc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { useAuthContext } from '../context/AuthContext';
-import { db, storage } from '../../../backend/utils/FireBase';
+import {storage } from '../../../backend/utils/FireBase';
 import toast from 'react-hot-toast';
-// import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { Link } from 'react-router-dom';
 import user_empty from '../assets/user_empty.png';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { SocketContext } from '../context/SocketContext';
+import Switch from '@mui/material/Switch';
+import Button from '@mui/material/Button';
+import Avatar from '@mui/material/Avatar';
+import Typography from '@mui/material/Typography';
 const UserProfile = () => {
-  const { Authuser } = useAuthContext();
-
+  const { Authuser ,setAuthuser} = useAuthContext();
+ const {socket}=useContext(SocketContext);
   const [userDetails, setUserDetails] = useState(null);
-  const [showOnline, setShowOnline] = useState(false);
-  const [showLastSeen, setShowLastSeen] = useState(false);
+  const [showOnline, setShowOnline] = useState(Authuser.ShowOnline);
+  const [showLastSeen, setShowLastSeen] = useState(Authuser.ShowLastSeen);
+  const [showReadReceipts, setReadReceipts] = useState(Authuser.ReadReceipts);
   const [themeImage, setThemeImage] = useState(null);
   const customTheme = {
     fontSize: '18px', // font size
@@ -32,17 +35,41 @@ const UserProfile = () => {
     color: '#fff', // text color
     boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
   }
+  useEffect(()=>{
+      socket.on('ChangedPhoto',({user,downloadURL})=>{
+        // console.log(user);
+        setAuthuser(user);
+      }
+    )
+    socket.on('UpdatedLastSeen',(data)=>{
+      // console.log(data);
+      setAuthuser(data);
+    })
+    socket.on('UpdatedReadReceipts',(data)=>{
+      // console.log(data);
+      setAuthuser(data);
+    })
+    socket.on('UpdatedOnlineStatus',(data)=>{
+      // console.log(data);
+      setAuthuser(data);
+    })
+    return ()=>{
+      socket.off('ChangedOnlineStatus');
+      socket.off('ChangedPhoto');
+      socket.off('UpdatedReadReceipts');
+      socket.off('UpdatedLastSeen');
+    }
+  },[socket]);
   const handleProfilePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Create a new file name (e.g., with a timestamp)
-    const newFileName = `${Authuser}.png`;
+    const newFileName = `${Authuser._id}.png`;
     const storageRef = ref(storage, `profilePhotos/${newFileName}`);
 
     // Upload the file
     const uploadTask = uploadBytesResumable(storageRef, file);
-
     uploadTask.on(
       'state_changed',
       (snapshot) => {
@@ -53,66 +80,26 @@ const UserProfile = () => {
         console.error('Upload failed:', error);
       },
       async () => {
-        // Get the download URL
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-        // Update the profile picture URL in Firestore
-        try {
-          const userRef = doc(db, 'users', Authuser);
-          await updateDoc(userRef, { profilePic: downloadURL });
-
-          // Update the state to show the new profile picture
-          setUserDetails((prevDetails) => ({
-            ...prevDetails,
-            profilePic: downloadURL,
-          }));
-
-          console.log('Profile photo updated successfully');
-        } catch (error) {
-          console.error('Failed to update profile photo:', error);
-        }
+       socket.emit('ProfilePhotoChanged',{Authuser,downloadURL:await getDownloadURL(uploadTask.snapshot.ref)})
       }
     );
-  };
-  function convertFirebaseTimestamp(firebaseTimestamp) {
-    // Check if the input is a Firestore.Timestamp
-    if (firebaseTimestamp && firebaseTimestamp.seconds) {
-      // Convert the Firestore timestamp to milliseconds
-      const date = new Date(firebaseTimestamp.seconds * 1000);
-
-      // Format the date to a readable string
-      return date.toLocaleString('en-US', {
-        timeZone: 'UTC',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-    } else {
-      return "Invalid Timestamp";
-    }
+    
   }
-
   useEffect(() => {
     const fetchUserDetails = async () => {
-      const userRef = doc(db, 'users', Authuser);
-      const userSnapshot = await getDoc(userRef);
-
-      if (userSnapshot.exists()) {
-        const data = userSnapshot.data();
-        setUserDetails(data);
-        setShowOnline(data.showOnline);
-        setShowLastSeen(data.showLastSeen);
-      } else {
-        console.log('No such user!');
-      }
+        try{
+          const res=await fetch('http://localhost:5000/users/'+Authuser._id);
+          const data=await res.json();
+          setUserDetails(data);
+          setThemeImage(data.profilePic);
+        }
+        catch(error){
+         console.log(error);
+        }
     };
 
     fetchUserDetails();
   }, [Authuser]);
-
   const deleteFile = async (filePath) => {
     const fileRef = ref(storage, filePath); // File path in Firebase Storage
 
@@ -123,11 +110,10 @@ const UserProfile = () => {
       console.error('Failed to delete file:', error);
     }
   };
-
   const handleThemeUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const newFileName = `${Authuser}.png`; // Adding timestamp to the original file name
+    const newFileName = `${Authuser._id}.png`; // Adding timestamp to the original file name
     const storageRef = ref(storage, `chatThemes/${newFileName}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -155,64 +141,129 @@ const UserProfile = () => {
   const userMemo = useMemo(() => userDetails, [userDetails]);
 
   if (!userDetails) return <div>Loading...</div>;
+return (
+  <div style={styles.container} className='overflow-y-scroll' >
+    <Button variant="contained" color="primary" onClick={() => window.history.back()}>
+      Back to Chat
+    </Button>
+    <Typography variant="h4" style={styles.heading}>
+      User Profile
+    </Typography>
+    <Avatar
+      src={userDetails.profilePic || '/default-avatar.png'}
+      alt="Profile"
+      sx={{ width: 80, height: 80, cursor: 'pointer', margin: '10px auto' }}
+      onClick={() => document.getElementById('profilePhotoInput').click()}
+    />
 
-  return (
-    <div className="user-profile flex flex-col gap-5">
-      <h3>BACK TO CHAT</h3>
-      <h1>User Profile</h1>
-      {/* Profile image with onClick to trigger file input */}
-      <img
-        src={userDetails.profilePic || user_empty}
-        width={50}
-        className="m-auto cursor-pointer"
-        height={50}
-        alt="Profile"
-        onClick={() => document.getElementById('profilePhotoInput').click()}
+    {/* Hidden File Input for Profile Photo */}
+    <input
+      type="file"
+      id="profilePhotoInput"
+      style={{ display: 'none' }}
+      accept="image/*"
+      onChange={handleProfilePhotoChange}
+    />
+
+    <Typography  variant="h5">Username: {userDetails.username}</Typography>
+    <Typography variant="h5">Email: {userDetails.email}</Typography>
+    <Typography variant="h5">
+      Last Seen: {userDetails.lastSeen === null ? 'ONLINE' : userDetails.lastSeen}
+    </Typography>
+    <Typography variant="h5">
+      Account Created At: {userDetails.createdAt}
+    </Typography>
+
+    {/* Switch Toggles */}
+    <div style={styles.switchContainer}>
+      <Typography variant="body1">Show Online Status</Typography>
+      <Switch
+        checked={showOnline}
+        onChange={() =>{ setShowOnline(!showOnline);
+          socket.emit('UpdateOnlineStatus', { userId: Authuser._id, onlineStatus: !showOnline });
+        }}
+        color="primary"
       />
-
-      {/* Hidden file input for changing profile photo */}
-      <input
-        type="file"
-        id="profilePhotoInput"
-        style={{ display: 'none' }}
-        accept="image/*"
-        onChange={handleProfilePhotoChange}
-      />
-      <Link to="/" />
-      <h2>USERNAME: {userDetails.username}</h2>
-      <p>Email: {userDetails.email}</p>
-      <h2>LAST SEEN: {userDetails.lastSeen}</h2>
-      <h2>ACCOUNT CREATED AT: {convertFirebaseTimestamp(userDetails.createdAt)}</h2>
-
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={showOnline}
-            onChange={() => setShowOnline(!showOnline)}
-          />
-          Show Online Status
-        </label>
-      </div>
-      <div>
-        <label>
-          <input
-            type="checkbox"
-            checked={showLastSeen}
-            onChange={() => setShowLastSeen(!showLastSeen)}
-          />
-          Show Last Seen
-        </label>
-      </div>
-
-      <div>
-        <h3>Upload Chat Theme</h3>
-        <input type="file" accept="image/*" onChange={handleThemeUpload} />
-        {themeImage && <img src={themeImage} alt="Uploaded Theme" style={{ maxWidth: '50%', margin: 'auto', marginTop: '20px' }} />}
-      </div>
-      <button onClick={() => deleteFile(`chatThemes/${Authuser}.png`)}>DELETE CURRENT CHAT IMAGE</button>
     </div>
-  );
+
+    <div style={styles.switchContainer}>
+      <Typography variant="body1">Show Last Seen</Typography>
+      <Switch
+        checked={showLastSeen}
+        onChange={() => {setShowLastSeen(!showLastSeen);
+          socket.emit('UpdateLastSeen', { userId: Authuser._id, lastSeen: !showLastSeen });
+        }}
+        color="primary"
+      />
+    </div>
+
+    <div style={styles.switchContainer}>
+      <Typography variant="body1">Read Receipts</Typography>
+      <Switch
+        checked={showReadReceipts} // Assuming you might have a separate state for read receipts
+        onChange={() => {setReadReceipts(!showReadReceipts); 
+          socket.emit('UpdateReadReceipts', { userId: Authuser._id, readReceipts: !showReadReceipts });
+        }}
+        color="primary"
+      />
+    </div>
+
+    {/* Chat Theme Upload */}
+    <div style={styles.themeUpload}>
+      <Typography variant="body1" gutterBottom>
+        Upload Chat Theme
+      </Typography>
+      <input type="file" accept="image/*" onChange={handleThemeUpload} style={styles.fileInput} />
+    </div>
+
+    <Button
+      variant="outlined"
+      color="secondary"
+      onClick={() => deleteFile(`chatThemes/${userDetails.userID}.png`)}
+    >
+      Delete Current Chat Image
+    </Button>
+  </div>
+);
+};
+
+const styles = {
+container: {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  background: '#f2f2f2',
+  gap: '15px',
+  width:'500px',
+  marginTop:'40px',
+  maxWidth: '1300px',
+  maxHeight:'700px',
+  margin: '20px auto',
+  marginTop: '-10px',
+  padding: '20px',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+  borderRadius: '10px',
+  backgroundColor: '#f9f9f9',
+},
+heading: {
+  fontWeight: '600',
+  color: '#3f51b5',
+},
+switchContainer: {
+  display: 'flex',
+  justifyContent: 'space-between',
+  width: '100%',
+  padding: '5px 0',
+},
+themeUpload: {
+  width: '100%',
+  textAlign: 'center',
+  margin: '15px 0',
+},
+fileInput: {
+  width: '100%',
+  padding: '10px 0',
+},
 };
 
 export default UserProfile;

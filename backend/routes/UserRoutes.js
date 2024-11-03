@@ -9,14 +9,13 @@ router.get('/', async (req, res) => {
     try {
         // Fetch all users from the MongoDB collection
         const users = await User.find(); // Retrieves all documents from the 'users' collection
-
         // Map through documents to structure the response
         const formattedUsers = users.map(user => ({
             id: user._id, // Use _id as the user ID
             ...user.toObject(), // Convert Mongoose document to plain JavaScript object
         }));
-
         res.json(formattedUsers); // Send the users data as response
+        //  res.status(200).json(formattedUsers);
     } catch (error) {
         console.error("Error fetching users:", error);
         res.status(500).json({ error: 'Failed to fetch users' });

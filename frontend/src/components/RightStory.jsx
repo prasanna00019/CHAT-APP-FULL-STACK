@@ -14,12 +14,12 @@ const RightStory = () => {
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [ClickLike, setClickLike] = useState(false);
-  const [likes,setLikes] = useState([]);
   const [progress, setProgress] = useState(0);
   const { socket } = useContext(SocketContext);
   const { Authuser } = useAuthContext();
   const displayDuration = 3000; 
   const [viewers, setViewers] = useState([]); 
+  const [NumLikes, setNumLikes] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const fetchViewers = async (storyId) => {
     try {
@@ -51,7 +51,13 @@ const RightStory = () => {
   useEffect(() => {
     socket.on('newStory', (data) => {
       if (data.story.visibility.includes(Authuser._id)) {
-
+          toast.success(`NEW STORY ADDED`, {
+            style: {
+              borderRadius: '10px',
+              background: '#333',
+              color: '#fff',
+            },
+          })   
       }
       else {
         toast.error('sorry you are not in the story !!! ', {
@@ -87,12 +93,11 @@ const RightStory = () => {
       if (stories[currentStoryIndex]?._id === storyId) {
         updateViewCount(storyId, Authuser._id);
         fetchViewers(storyId);
-        // setViewers(viewers);
       }
     });
-    socket.on('updateLikes', ({ storyId, likes }) => {
-      if (stories[currentStoryIndex]?._id === storyId) {
-        setLikes(likes);
+    socket.on('updateLikes', (data) => {
+      console.log(data, ' likes data');
+      if (stories[currentStoryIndex]?._id === data._id) {
         toast.success(`LIKES UPDATED`, {
           style: {
             borderRadius: '10px',
@@ -113,12 +118,14 @@ const RightStory = () => {
   const handleLikeStory = () => {
     const storyId = stories[currentStoryIndex]?._id;
     if (!storyId) return;
-
-    // Emit the likeStory event
     socket.emit('likeStory', { storyId, userId: Authuser._id });
-
-    // Optionally update the local state for immediate feedback
-    setLikes((prevLikes) => [...prevLikes, { userId: Authuser._id }]);
+    setClickLike(!ClickLike); // toggle the like state
+   if(ClickLike){ 
+   setNumLikes((prevNumLikes) => prevNumLikes + 1);
+  }
+  else{
+    setNumLikes((prevNumLikes) => prevNumLikes - 1);
+  }
   };
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
@@ -145,19 +152,14 @@ const RightStory = () => {
         throw new Error('Failed to fetch stories');
       }
       let data = await response.json();
-      // console.log(data);
-      // data=data.filter((story)=>story.viewers.includes(Authuser._id));
       setStories(data);
       setCurrentStoryIndex(0);
-      // setClickedUserId(null);
       setIsVisible(true);
       setProgress(0);
     } catch (error) {
       console.error('Error fetching stories:', error);
     }
   };
-
-  // Fetch stories whenever clickedUserId changes
   useEffect(() => {
     if (clickedUserId) {
       fetchUserStories(clickedUserId);
@@ -246,23 +248,24 @@ const RightStory = () => {
       <div className='p-4'>
         <h3 className='text-xl mb-2'>{currentStory.username}'s Story</h3>
         <p>{currentStory.content}</p>
+        <div>{
+  currentStory.media && <img src={currentStory.media} width={300} height={300} alt="" />}</div>
         <div className="flex items-center gap-4">
           {/* {console.log(currentStory.likes)} */}
           {
-            isLikedByUser ? <img src={emptyLike} onClick={() => { handleLikeStory(); setClickLike(!ClickLike) }} alt="Like" width={20} height={20} /> :
-              <img src={GreenHeart} onClick={() => { handleLikeStory(); setClickLike(!ClickLike) }} alt="Like" width={20} height={20} />
-          }
+  !NumLikes ? <img src={emptyLike} onClick={handleLikeStory} alt="Like" width={20} height={20} /> :
+    <img src={GreenHeart} onClick={handleLikeStory} alt="Like" width={20} height={20} />
+}
           {/* <img onClick={()=>{handleLikeStory(); setClickLike(!ClickLike) }} src={ClickLike ? GreenHeart : emptyLike} alt="Like" width={20} height={20} /> */}
 
-          <span>{ClickLike ? currentStory.likes.length + 1 : currentStory.likes.length} Likes</span>
-        </div>
+          <span>{NumLikes} Likes</span>        </div>
       </div>
 
       {/* Viewers List */}
       {isPaused && (
         <div className="p-4">
           <h4 className='text-lg mb-2'>Viewers:</h4>
-          <Viewers viewers={viewers} isLikedByUser={isLikedByUser} />
+          <Viewers viewers={viewers} isLikedByUser={isLikedByUser} NumLikes={NumLikes} />
         </div>
       )}
     </div>

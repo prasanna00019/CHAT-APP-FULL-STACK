@@ -21,7 +21,6 @@ export const AuthContextProvider = ({ children }) => {
           acc[user._id] = user.username; // or use `user` if you want the full object
           return acc;
         }, {});
-
         setUsers(data);
         setUserMap(mappedUsers);
       } catch (error) {

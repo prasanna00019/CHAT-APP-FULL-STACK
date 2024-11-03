@@ -16,6 +16,7 @@ export const StatusProvider = ({ children }) => {
   const [messages, setMessages]=useState([]); // GROUP MESSAGES
   const [messages2,setMessages2]=useState([]); //ONE-TO-ONE MESSAGES // /
   const [userInfo, setUserInfo] = useState(null);
+  // const [AuthUserInfo,setAuthUserInfo]=useState(null);
   return (
     <StatusContext.Provider value={{ onlineStatus, setOnlineStatus, updatedStatus, setUpdatedStatus ,userInfo, setUserInfo
       ,clickedStoryId,setClickedStoryId ,clickedUserId,setClickedUserId ,messages, setMessages,messages2,setMessages2

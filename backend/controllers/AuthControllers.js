@@ -33,19 +33,7 @@ export const SignUp = async (req, res) => {
     newUser.save();
     createUserWithEmailAndPassword(auth, email, password);
     generateTokenAndSetCookie(newUser._id, res);
-    res.status(201).json({
-      _id: newUser._id,
-      email: newUser.email,
-      username: newUser.username,
-      profilePic: newUser.profilePic,
-      lastSeen: newUser.lastSeen,
-      ReadReceipts: newUser.ReadReceipts,
-      ShowLastSeen: newUser.ShowLastSeen,
-      password: hashedPassword,
-      ShowOnline: newUser.ShowOnline,
-      theme: newUser.theme,
-      chatWallpaper: newUser.chatWallpaper,
-    });
+    res.status(201).json(newUser);
   } catch (error) {
     console.error("Error during sign up:", error.message);
     res.status(400).json({ message: error.message });
@@ -60,11 +48,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ error: "INVALID EMAIL OR PASSWORD !!!" });
     }
     generateTokenAndSetCookie(user._id, res);
-    res.status(200).json({
-      _id: user._id,
-      email: user.email,
-      username: user.username,
-    });
+    res.status(200).json(user);
   } catch (error) {
     console.log("Error in login controller:", error.message);
     res.status(500).json({ error: "Internal server error" });

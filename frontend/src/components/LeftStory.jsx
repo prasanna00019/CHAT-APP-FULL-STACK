@@ -3,16 +3,43 @@ import { useAuthContext } from '../context/AuthContext';
 import { useStatusContext } from '../context/StatusContext';
 import { SocketContext } from '../context/SocketContext';
 import toast, { Toaster } from 'react-hot-toast';
-const LeftStory = () => {
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import axios from 'axios';
+import { Button, Checkbox, Dialog, DialogActions, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+const LeftStory = ({userId}) => {
   const [storiesByUser, setStoriesByUser] = useState({});
   const [newStoryContent, setNewStoryContent] = useState('');
+  const storage = getStorage();
   const { clickedUserId, setClickedUserId } = useStatusContext(); // Updated to handle clickedUserId
   const [loading, setLoading] = useState(false);
   const [s1, sets1] = useState(false)
+  const [image, setImage] = useState(null);
+const [imageURL, setImageURL] = useState('');
   const { Authuser } = useAuthContext();
+  const [allUsers, setAllUsers] = useState([]);
+  const [open,setOpen]= useState(false);
   const { socket } = useContext(SocketContext);
+  const [selectedParticipants, setSelectedParticipants] = useState([]);
+  const handleClickOpen = () => {
+    setOpen(true);
+  }
+  const handleClose = () => {
+    setOpen(false)
+  };
+  const handleImageChange = (event) => {
+    setImage(event.target.files[0]);
+  };
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/users/');
+      setAllUsers(res.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
   useEffect(() => {
     fetchStories();
+    fetchUsers();
   }, []);
   useEffect(() => {
     socket.on('storyCreated', (newStory) => {
@@ -85,19 +112,41 @@ const LeftStory = () => {
       alert('Please enter some content for your story');
       return;
     }
-
+    handleClickOpen();
+    // fetchStories();
+  };
+  
+const handleToggleParticipant = (userId) => {
+  const isSelected = selectedParticipants.includes(userId);
+  if (isSelected) {
+    setSelectedParticipants(selectedParticipants.filter((id) => id !== userId));
+  } else {
+    setSelectedParticipants([...selectedParticipants, userId]);
+  }
+};
+ const handleBroadcast=async()=>{
+  if (image) {
+    const imageRef = ref(storage, `images/${image.name}`);
+    await uploadBytes(imageRef, image);
+    const url = await getDownloadURL(imageRef);
+    console.log(url);
+    setImageURL(url);
+  }
+  const selectedUsers = allUsers.filter((user) => selectedParticipants.includes(user.id));
+    const visibility = selectedUsers.map((user) => user._id);
     // Emit the event to the server
     socket.emit('createStory', {
       userId: Authuser._id,
       username: Authuser.username,
       content: newStoryContent,
-      visibility: ['670fe2280ad0e102b1d42256', '670ff84eb261513b586a2b94'],
+      media: imageURL,
+      visibility,
     }
     );
     setNewStoryContent('');
-    // fetchStories();
-  };
-
+    handleClose();
+    setSelectedParticipants([]);
+ }
   return (
     <div className='p-3 border border-gray shadow-2xl mt-[-20px] font-bold shadow-blue-400 h-full w-[300px] bg-white rounded-lg'>
       <Toaster />
@@ -131,6 +180,30 @@ const LeftStory = () => {
           </ul>
         )}
       </div>
+      <Dialog open={open} onClose={handleClose}>
+            <h4>Select Participants to broadcast:
+              {console.log(allUsers)}
+            </h4>
+            {allUsers.map(user => (
+              <ListItem key={user._id} button onClick={() => handleToggleParticipant(user._id)}>
+                <ListItemIcon>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedParticipants.includes(user._id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                </ListItemIcon>
+                <ListItemText primary={user.username || user.email} />
+              </ListItem>
+            ))}
+              <input type="file" onChange={handleImageChange} />
+          <DialogActions>
+            <Button onClick={handleClose} color="secondary">Cancel</Button>
+            {/* <Button onClick={handleCreateGroup} color="primary">Create Group</Button> */}
+            <Button onClick={handleBroadcast} color="primary">Broadcast</Button>
+          </DialogActions>
+        </Dialog>
     </div>
   );
 };

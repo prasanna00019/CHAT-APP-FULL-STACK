@@ -50,7 +50,13 @@ const userSchema = new mongoose.Schema({
     {
       type: mongoose.Schema.Types.ObjectId
     }
-  ]
+  ],
+  LockedChats: [
+    {
+      userId: String,
+      password: String,
+    },
+  ],
 
 }, { timestamps: true });
 

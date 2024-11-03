@@ -6,18 +6,22 @@ import CryptoJS from 'crypto-js';
 import reaction from '../assets/reaction (1).png';
 import { Dialog, DialogTitle, DialogContent} from '@mui/material';
 import reply from '../assets/reply.png';
+import bluetick from '../assets/blue-double.png'
+import normaltick from '../assets/normal-double.png'
 import { Button, DialogActions, DialogContentText, FormControl, FormControlLabel, IconButton, Modal, Radio, RadioGroup, TextField } from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
 const Message = forwardRef((props,ref) => {
   const { setMessages2, messages2 ,userId,replyingTo, setReplyingTo, message2,
-  messageRefs}=props;
+  messageRefs,setShowMessageInfo,showMessageInfo
+ , dataMessageId, isSelected, onSelect, isSelectionMode,
+  dataMessageSender}=props;
   const [showEditModal, setShowEditModal] = useState(false); 
   const [editText, setEditText] = useState(''); // State for edited message text
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
   const { socket } = useContext(SocketContext);
   const [pinDuration, setPinDuration] = useState(''); // e.g., "24 hours", "7 days"
   const {userMap}=useAuthContext()
-  const {Authuser,clickedId,setclickedId}=useAuthContext();
+  const {Authuser, setAuthuser}=useAuthContext();
   const [currentMessage, setCurrentMessage] = useState(message2);
   const [deleteOption, setDeleteOption] = useState('forMe'); 
   const openDeleteModal = () => setShowModal(true);
@@ -93,10 +97,40 @@ const Message = forwardRef((props,ref) => {
   };
   useEffect(()=>{
     socket.on('messageStarredOneToOne',(user)=>{
-     setCurrentUser(user);
-   })  
+    setAuthuser(user);
+    // localStorage.setItem('chat-user', JSON.stringify(user));
+   }) 
+   socket.on('ChatLockOneToOne',(user)=>{
+    // console.log('user', user,' from message.jsx line no 103');
+    setAuthuser(user);
+    // localStorage.setItem('chat-user', JSON.stringify(user));
+   })
+   socket.on('MarkReadOneToOne', (data) => {
+    console.log(data, 'from here confirmed');
+    if (data) {
+        setMessages2((prevMessages) => {
+            return prevMessages.map((msg) => {
+                // Check if the current message's ID matches the one from the socket event
+                if (msg._id === data._id) {
+                    return {
+                        ...msg,
+                        status: {
+                            ...msg.status,
+                            state: "read", // Update the state to "read"
+                            readTime: new Date().toISOString(), // Optionally update readTime to current time
+                        },
+                    };
+                }
+                return msg; // Return the original message if IDs don't match
+            });
+        });
+    }
+});
+
  return ()=>{
    socket.off('messageStarredOneToOne')
+   socket.off('MarkReadOneToOne');
+   socket.off('ChatLockOneToOne');
  }
 },[socket])
   const scrollToMessage = (messageId) => {
@@ -136,6 +170,9 @@ const Message = forwardRef((props,ref) => {
     socket.emit('editMessageOneToOne', { messageId: message2._id, userId: message2.receiver, newText: editText });
     closeEditModal(); // Close the modal after editing
   };
+  const toggleMessageInfo=(messageId)=>{
+    setShowMessageInfo(showMessageInfo === messageId ? null : messageId);
+  }
   const handleEmojiSubmit=(emoji,messageId,userId,receiverId)=>{
      socket.emit('AddReactionOnetoOne',{emoji,messageId,userId,receiverId});
   }
@@ -162,12 +199,26 @@ const Message = forwardRef((props,ref) => {
     <>
       {
         !message2?.deletedFor?.includes(Authuser._id) &&
-        <div ref={ref} onClick={()=>{console.log(message2._id)}} className={`${message2.sender === Authuser._id ? 'ml-[270px] bg-green-300' : 'mr-[200px] bg-cyan-200'}  mb-3 border border-gray
-         rounded-lg shadow-2xl shadow-cyan-200  w-[60%]` }>
+        <div ref={ref} data-message-id={dataMessageId} 
+        data-message-sender={dataMessageSender} onClick={isSelectionMode ? onSelect : null} className={`${message2.sender === Authuser._id ? 'ml-[270px] bg-green-300' : 'mr-[200px] bg-cyan-200'}  message ${isSelected ? 'selected' : ''} mb-3 border border-gray
+         rounded-lg shadow-2xl shadow-cyan-200  w-[60%]` } >
+              {isSelectionMode && <input type="checkbox" checked={isSelected} onChange={onSelect} />}
+
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
               {/* {console.log(typeof(currentMessage.sender), " from message.jsx ")} */}
               <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/>
               <p>{currentMessage.sender===Authuser._id?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,secretKey)}</p>
+              {message2.sender === Authuser._id ? (
+message2.status.state === 'read' ? (
+<span> <img src={bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
+) : message2.status.state === 'delivered' ? (
+<span> <img src={normaltick} width={30} height={10} alt="" /> </span> // Normal double tick
+) : message2.status.state === 'sent' ? (
+<span>✔</span> // Single tick
+) : ( 
+ '7'
+)
+) : null}
           {/* <p>{currentMessage.sender===Authuser._id ? "YOU ": currentMessage.sender}:{currentMessage.text}</p> */}
           {/* <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/> */}
           {/* <span>{tickIcon}</span> */}
@@ -176,10 +227,11 @@ const Message = forwardRef((props,ref) => {
               <Button variant="contained" color="secondary" onClick={openDeleteModal}>
                 DELETE
               </Button>
+             { message2.sender ===userId && 
               <Button onClick={openEditModal} variant="contained" color="primary">
                 EDIT
               </Button>
-            
+}
             </>
           )}
           <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,secretKey));}}>
@@ -189,7 +241,7 @@ const Message = forwardRef((props,ref) => {
             {message2.pinned.isPinned ? 'UNPIN' : 'PIN'}
            </Button>
           <button className="ml-5" onClick={() => socket.emit('starMessageOneToOne', message2._id,userId)}>
-            {currentUser?.starredMessages?.includes(message2._id) ? 'UNSTAR' : 'STAR'}
+            {Authuser?.starredMessages?.includes(message2._id) ? 'UNSTAR' : 'STAR'}
           </button>
          <div className=' flex gap-3 mt-3 justify-between'>
           <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
@@ -198,7 +250,13 @@ const Message = forwardRef((props,ref) => {
            <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
                 ))
            }
-          <img className='mr-2' src={info} width={25} alt="" />
+           {
+            message2.sender===Authuser._id && 
+          <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message2._id);
+            scrollToMessage(message2._id)
+          }
+          } height={10} alt="" />
+                        }  
           </div> 
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
            <Dialog open={openReaction} onClose={handleClose}>

@@ -213,7 +213,7 @@ export const editMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const { editedText } = req.body; // Updated message text
-    console.log(editedText, ' from server.js ... ')
+    // console.log(editedText, ' from server.js ... ')
   //  console.log(editedText);
     // Update the message's text and the editedAt timestamp
     await Message.findByIdAndUpdate(messageId, {
@@ -436,12 +436,9 @@ export const markMessageAsRead = async (req, res) => {
 
     // If the message was not found or already marked as read, return a message
     if (!result) {
-      return res.status(200).json({ message: 'No unread message found to update.' });
+      return res.status(200).json({ message: 'N/A' });
     }
-
-    // Respond with the updated message
-    res.status(200).json({ message: 'Message marked as read.', updatedMessage: result });
-
+    res.status(200).json({message:result});
   } catch (error) {
     console.error("Error in marking message as read:", error.message);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
@@ -490,7 +487,6 @@ export const getMessageDeliveryAndReadTime = async (req, res) => {
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };
-// Function to search messages
 function encryptMessage(message, secretKey) {
   return CryptoJS.AES.encrypt(message, secretKey).toString();
 }
@@ -533,56 +529,17 @@ export const searchMessages = async (req, res) => {
     ]);
     const matchingMessages = messages.filter((message) => {
             try {
-              // Decrypt the message text
               const decryptedText = decryptMessage(message.text, secretKey);
               message.text=decryptedText;
-            //  console.log(decryptedText, " decrypted text");
-              // Check if the decrypted message contains the search term
               return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
             } catch (error) {
               console.error('Error decrypting message:', error);
               return false; // Skip messages that cannot be decrypted
             }
           });
-      // console.log(matchingMessages)
-
     res.status(200).json(matchingMessages);
   } catch (error) {
     console.error("Error searching messages:", error);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };
-
-
-// Function to decrypt the message
-// export const searchMessages = async (req, res) => {
-//   try {
-//     const { conversationId, searchTerm } = req.body;
-
-//     // Step 1: Find messages that start with the common prefix for encrypted messages
-//     const messages = await Message.find({
-//       conversationId: new mongoose.Types.ObjectId(conversationId),
-//       encryptedText: { $regex: '^U2FsdGVkX1' } // Filter messages with the encrypted prefix
-//     });
-// console.log(messages, "messages")
-//     // Step 2: Decrypt each message and filter based on the search term
-//     const matchingMessages = messages.filter((message) => {
-//       try {
-//         // Decrypt the message text
-//         const decryptedText = decryptMessage(message.encryptedText, secretKey);
-
-//         // Check if the decrypted message contains the search term
-//         return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
-//       } catch (error) {
-//         console.error('Error decrypting message:', error);
-//         return false; // Skip messages that cannot be decrypted
-//       }
-//     });
-// console.log(matchingMessages)
-//     // Step 3: Return the matching messages
-//     res.status(200).json(matchingMessages);
-//   } catch (error) {
-//     console.error('Error searching messages:', error);
-//     res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
-//   }
-// };

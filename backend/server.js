@@ -10,10 +10,16 @@ import StoryRoutes from './routes/StoryRoutes.js'
 import GroupRoutes from './routes/GroupRoutes.js'
 import path from "path";
 import connectDB from "./DB/connectDB.js";
+import bcrypt from 'bcryptjs';
 import Story from "./models/StoryModel.js";
 import GroupMessage from "./models/GroupMessageModel.js";
 import User from "./models/UserModel.js";
 import Message from "./models/MessageModel.js";
+import CryptoJS from "crypto-js";
+import { read } from "fs";
+function encryptMessage(message, secretKey) {
+  return CryptoJS.AES.encrypt(message, secretKey).toString();
+}
 dotenv.config();
 const PORT = 5000;
 const app = express();
@@ -99,9 +105,9 @@ io.on('connection', async (socket) => {
       const receiverSocket = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === messageData.receiver
       );
+      socket.emit('receiveMessage', data);
       if (receiverSocket) {
         io.to(receiverSocket).emit('receiveMessage', data);
-        socket.emit('receiveMessage', data);
       }
     }
     catch (e) {
@@ -184,9 +190,9 @@ io.on('connection', async (socket) => {
         const receiverSocketId = Object.keys(userSocketMap).find(
           (key) => userSocketMap[key] === userId
         );
+        socket.emit('messageDeletedForEveryoneOnetoOne', savedMessage);  // Emit to sender
         if (receiverSocketId) {
           io.to(receiverSocketId).emit('messageDeletedForEveryoneOnetoOne', savedMessage); // Emit to receiver
-          socket.emit('messageDeletedForEveryoneOnetoOne', savedMessage);  // Emit to sender
         }
       }
     }
@@ -194,10 +200,6 @@ io.on('connection', async (socket) => {
       console.error('Error deleting message for everyone:', error);
     }
   });
-  // server.js
-
-  // server.js
-
   socket.on('pinMessageGroup', async (messageId, pinData, groupId) => {
     try {
       const message = await GroupMessage.findById(messageId);
@@ -237,9 +239,9 @@ io.on('connection', async (socket) => {
       const receiverSocketId = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === userId
       );
+      socket.emit('messagePinnedOnetoOne', message);  // Emit to sender
       if (receiverSocketId) {
         io.to(receiverSocketId).emit('messagePinnedOnetoOne', message); // Emit to receiver
-        socket.emit('messagePinnedOnetoOne', message);  // Emit to sender
       }
     }
     catch (error) {
@@ -275,9 +277,9 @@ io.on('connection', async (socket) => {
       const receiverSocketId = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === receiverId
       );
+      socket.emit('messageReactedOneToOne', message);  // Emit to sender
       if (receiverSocketId) {
         io.to(receiverSocketId).emit('messageReactedOneToOne', message); // Emit to receiver
-        socket.emit('messageReactedOneToOne', message);  // Emit to sender
       }
     }
     catch (error) {
@@ -311,6 +313,50 @@ io.on('connection', async (socket) => {
       socket.emit('error', 'An error occurred while updating starred messages');
     }
   });
+  socket.on('ChatLock',async({AuthuserId,receiverId,password,remove})=>{
+       try{
+        const user = await User.findById(AuthuserId);
+        // Initialize LockedChats if it does not exist
+        if (!user.LockedChats) {
+          user.LockedChats = [];
+        }
+        // Find the index of the receiverId in LockedChats
+        let lockIndex = user.LockedChats.findIndex(lock => lock.userId === receiverId);
+        if (password) {
+          // If password provided, add or update the lock
+          const hashedPassword = await bcrypt.hash(password, 10);
+          const lockEntry = { userId: receiverId, password: password };
+    
+          if (lockIndex === -1) {
+            // If the targetId is not already locked, add a new entry
+            user.LockedChats.push(lockEntry);
+          } else {
+            // If already locked, update the password
+            user.LockedChats[lockIndex].password = password;
+          }
+        } else if(remove) {
+          if (lockIndex !== -1) {
+            user.LockedChats.splice(lockIndex, 1);
+          }
+        }
+        // Save changes to the user document
+        await user.save();
+        // console.log(user);
+        const receiverSocketId = Object.keys(userSocketMap).find(
+          (key) => userSocketMap[key] === receiverId
+        );
+    
+        socket.emit('ChatLockOneToOne', user);  // Emit to sender
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit('ChatLockOneToOne', user); // Emit to receiver
+        }
+    
+      }
+       catch(error){
+        console.error("Error handling chat lock:", error.message);
+        // res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+       }
+  })
   socket.on('starMessageOneToOne', async (messageId, userId) => {
     try {
       // Step 1: Find the user by userId
@@ -340,17 +386,13 @@ io.on('connection', async (socket) => {
   })
   socket.on('editMessageGroup', async ({ messageId, groupId, newText }) => {
     try {
-      // Find the message by ID
       const message = await GroupMessage.findById(messageId);
       if (!message) {
         return socket.emit('error', 'Message not found');
       }
-      // Update the message text
-      message.text = newText;
-      message.editedAt = Date.now(); // Optionally store the time when the message was edited
-      // Save the updated message
+      message.text = encryptMessage( newText,process.env.GROUP_CHAT_SECRET_KEY);
+      message.editedAt = Date.now(); 
       await message.save();
-      // Emit the updated message to the group
       io.to(groupId).emit('messageEditedGroup', message);
     } catch (error) {
       console.error('Error editing message:', error);
@@ -369,9 +411,9 @@ io.on('connection', async (socket) => {
         const receiverSocketId = Object.keys(userSocketMap).find(
           (key) => userSocketMap[key] === userId
         );
+        socket.emit('messageEditedOnetoOne', data);  // Emit to sender
         if (receiverSocketId) {
           io.to(receiverSocketId).emit('messageEditedOnetoOne', data); // Emit to receiver
-          socket.emit('messageEditedOnetoOne', data);  // Emit to sender
         }
       }
     } catch (error) {
@@ -394,7 +436,87 @@ io.on('connection', async (socket) => {
       sender: data.sender
     });
   })
-
+  socket.on('UpdateLastSeen',async({userId,lastSeen})=>{
+    try{
+      const user= await User.findById(userId);
+      user.ShowLastSeen=lastSeen;
+      await user.save();
+      // console.log(user);
+      io.emit('UpdatedLastSeen',user);
+    }
+    catch(err){ console.log(err); }
+  })
+  socket.on('UpdateOnlineStatus',async({userId,onlineStatus})=>{
+    try{
+      const user= await User.findById(userId);
+      user.ShowOnline=onlineStatus; 
+      await user.save();
+      // console.log(user);
+      io.emit('UpdatedOnlineStatus',user);
+    }
+    catch(err){ console.log(err); }
+  });
+  socket.on('ReadMessageGroup',async({messageId,senderId,readingUserId})=>{
+     try{
+      // console.log(messageId,readingUserId,' from users !!! ');
+      // console.log(senderId,' group ID')
+      const res= await fetch(`http://localhost:5000/group/MarkRead/${messageId}/${readingUserId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },});
+        const data=await res.json();
+      if(data.message!=='N/A'){  
+        console.log(data.message,' from groupRead .. . .');
+       io.to(senderId).emit('MarkReadGroup',data.message);
+      }
+     }
+     catch(error){
+      console.log(error)
+     } 
+  })
+  socket.on('ReadMessageOneToOne',async({messageId,senderId})=>{
+    try{
+       const res= await fetch(`http://localhost:5000/message/Message-read/${messageId}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },});
+    const data=await res.json()
+    if(data.message!='N/A'){
+      const receiverSocket = Object.keys(userSocketMap).find(
+        (key) => userSocketMap[key] === senderId
+      );
+      if (receiverSocket) {
+        io.to(receiverSocket).emit('MarkReadOneToOne', data.message);
+      }
+    }
+    }
+    catch(error){
+      console.log(error)
+    }
+  })
+  socket.on('UpdateReadReceipts',async({userId,readReceipts})=>{
+    try{
+      const user= await User.findById(userId);
+      user.ReadReceipts=readReceipts;
+      await user.save();
+      console.log(user);
+      io.emit('UpdatedReadReceipts',user);
+    }
+    catch(err){ console.log(err); }
+  })
+  socket.on('ProfilePhotoChanged',async({Authuser,downloadURL})=>{
+    try{
+      const user= await User.findById(Authuser._id);
+      console.log(typeof(downloadURL),downloadURL);
+       user.profilePic=downloadURL;
+       await user.save();  
+       console.log(user);
+      io.emit('ChangedPhoto',{user,downloadURL})
+    }
+    catch(err){ }
+  })
   if (Authuser) {
     onlineUsers[Authuser] = { socketId: socket.id, lastSeen: null };
     socket.broadcast.emit('user_online', { userId: Authuser, online: true, lastSeen: null });
@@ -501,24 +623,21 @@ io.on('connection', async (socket) => {
       if (!story) {
         return;
       }
-
       // Check if the user has already liked the story
       const alreadyLiked = story.likes.some(like => like.userId.toString() === userId);
       if (!alreadyLiked) {
         // Add the like to the story
         story.likes.push({ userId });
         await story.save();
-
         // Emit the updated likes to all clients
-        io.emit('updateLikes', { storyId, likes: story.likes });
+        io.emit('updateLikes', story);
       }
       else {
         // Remove the like from the story
         story.likes = story.likes.filter(like => like.userId.toString() !== userId);
         await story.save();
-
         // Emit the updated likes to all clients
-        io.emit('updateLikes', { storyId, likes: story.likes });
+        io.emit('updateLikes', story);
       }
     } catch (error) {
       console.error('Error liking story:', error);

@@ -8,6 +8,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Radio from '@mui/material/Radio';
+import bluetick from '../assets/blue-double.png'
+import normaltick from '../assets/normal-double.png';
 import info from '../assets/information.png'
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -17,8 +19,14 @@ import reply from '../assets/reply.png'
 import reaction from '../assets/reaction (1).png'
 import { Modal} from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
+import { decryptMessage, encryptMessage } from '../helper_functions';
+import useLogout from '../hooks/useLogout';
 const GroupMessage =forwardRef((props,ref) => {
-const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs}=props;
+const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs,
+  setShowMessageInfo,showMessageInfo, dataMessageId,
+  dataMessageSender
+}=props;
+const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const { socket } = useContext(SocketContext);
   const {userMap}=useAuthContext();
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
@@ -94,7 +102,7 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
     const sender = originalMessage?.sender;
     return originalMessage ? (
       <div onClick={()=>scrollToMessage(replyId)} className="reply-content border border-black rounded-lg  border-x-green-600 border-x-8 bg-white">
-        <blockquote>{sender === userId ? 'YOU':userMap[sender]}:{originalMessage.text}</blockquote>
+        <blockquote>{sender === userId ? 'YOU':userMap[sender]}:{decryptMessage(originalMessage.text,GROUP_CHAT_SECRET_KEY)}</blockquote>
       </div>
     ) : (
       <div className="reply-content">
@@ -103,7 +111,7 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
     );
   };
   const openEditModal = () => {
-    setEditText(currentMessage.text); // Set the current message text in the input field
+    setEditText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)); // Set the current message text in the input field
     setShowEditModal(true);
   };
   const closeEditModal = () => setShowEditModal(false);
@@ -138,7 +146,9 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
       console.error('Error deleting message:', error);
     }
   };
-
+  const toggleMessageInfo=(messageId)=>{
+    setShowMessageInfo(showMessageInfo === messageId ? null : messageId);
+  }
   useEffect(() => {
     const fetchMessage = async (messageId) => {
       try {
@@ -154,11 +164,22 @@ const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,message
     }
   }, [message, socket]);
   useEffect(()=>{
+   socket.on('MarkReadGroup',(data)=>{
+    console.log(data,' from group UI read');
+   if(data){ 
+    setMessages((prevMessages) => 
+      prevMessages.map((message) => 
+        message._id === data._id ? data : message
+      )
+    );
+  }
+  }) 
    socket.on('messageStarredGroup',(user)=>{
     setCurrentUser(user);
   })  
 return ()=>{
   socket.off('messageStarredGroup')
+  socket.off('MarkReadGroup');
 }
   },[socket])
   const handleEmojiSubmit=(emoji,messageId,userId,groupId)=>{
@@ -171,13 +192,37 @@ return ()=>{
     <>
       {
         !message.deletedFor.includes(userId) &&
-        <div ref={ref} className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }>
+        <div ref={ref}
+        data-message-id={dataMessageId}
+        data-message-sender={dataMessageSender} 
+        className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }>
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
 
-          <p>{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{currentMessage.text}</p>
-       
+          <p>{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
+       {/* {console.log(message.status)} */}
           <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
-          <span>{tickIcon}</span>
+          {/* <span>{tickIcon}</span> */}
+          {message.sender === userId ? (
+  (() => {
+    // Check if all users have read the message
+    const allRead = message.status.every(status => status.state === 'read');
+    
+    // Check if all users have at least delivered the message
+    const allDelivered = message.status.every(status => status.state === 'delivered' || status.state === 'read');
+
+    if (allRead) {
+      // Show blue double tick if everyone has read
+      return <span><img src={bluetick} width={30} height={10} alt="Read by all" /></span>;
+    } else if (allDelivered) {
+      // Show normal double tick if everyone has delivered, but not necessarily read
+      return <span><img src={normaltick} width={30} height={10} alt="Delivered to all" /></span>;
+    } else {
+      // Show single tick if not everyone has delivered
+      return <span>✔</span>;
+    }
+  })()
+) : null}
+
           { (
             <>
               <Button variant="contained" color="secondary" onClick={openDeleteModal}>
@@ -188,7 +233,7 @@ return ()=>{
               </Button>
             </>
           )}
-          <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(currentMessage.text);}}>
+          <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
             COPY
           </button>
            <Button onClick={handlePinClick}>
@@ -203,8 +248,14 @@ return ()=>{
            <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
                 ))
            }
-          <img src={info} width={20} alt="" />
+          
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
+           {
+            message.sender===userId && 
+          <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
+            scrollToMessage(message._id)
+          }} alt="" />
+                        }
            <Dialog open={openReaction} onClose={handleClose}>
       <DialogTitle>Select an Emoji Reaction</DialogTitle>
       <DialogContent>

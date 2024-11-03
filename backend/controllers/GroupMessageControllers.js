@@ -3,6 +3,14 @@ import Conversation from "../models/ConversationModel.js";
 import GroupMessage from "../models/GroupMessageModel.js";
 import Group from "../models/GroupModel.js";
 import User from "../models/UserModel.js";
+import CryptoJS from "crypto-js";
+function encryptMessage(message, secretKey) {
+  return CryptoJS.AES.encrypt(message, secretKey).toString();
+}
+function decryptMessage(encryptedMessage, secretKey) {
+  const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
+  return bytes.toString(CryptoJS.enc.Utf8);
+}
 export const sendMessageGroup = async (req, res) => {
     try {
       const { messageData, replyTo } = req.body; 
@@ -149,7 +157,7 @@ export const sendMessageGroup = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-    if (!message.deletedForEveryone && message.text==='DELETED FOR EVERYONE') {
+    if (!message.deletedForEveryone && decryptMessage(message.text,process.env.GROUP_CHAT_SECRET_KEY)==='DELETED FOR EVERYONE') {
       // If the message is already marked as deleted for everyone, remove it from the database
       const m=await GroupMessage.findById(messageId);
       m.deletedForEveryone=true;
@@ -165,7 +173,7 @@ export const sendMessageGroup = async (req, res) => {
     }
     else {
       // Update the message to reflect that it's been deleted for everyone
-      message.text = 'DELETED FOR EVERYONE'
+      message.text =encryptMessage ('DELETED FOR EVERYONE',process.env.GROUP_CHAT_SECRET_KEY);
       message.deletedForEveryone = false;
       await message.save();
       res.status(200).json(message);
@@ -192,3 +200,94 @@ export const sendMessageGroup = async (req, res) => {
       res.status(500).json({ message: "Server error" });
     }
   }
+  export const markGroupMessageAsRead = async (req, res) => {
+    try {
+      const { messageId,authUserId } = req.params; // Get the messageId from the route parameter  
+      // Find the group message
+      const message = await GroupMessage.findById(messageId);
+    //  console.log(message)
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+  
+      // Check if the user already exists in the status array
+      const userStatusIndex = message.status.findIndex(status => status.userId.toString() === authUserId.toString());
+  // console.log(userStatusIndex)
+  if (userStatusIndex !== -1 && message.status[userStatusIndex].state === 'read') {
+    return res.status(200).json({ message: 'N/A' });
+  }
+      if (userStatusIndex !== -1) {
+        // console.log('here...')
+        // User exists, update their status to 'read'
+        message.status[userStatusIndex].state = 'read';
+        message.status[userStatusIndex].readTime = Date.now();
+        // console.log(message,'seconf');
+      } else {
+
+        // User does not exist, push a new status entry for the user
+        message.status.push({
+          userId: authUserId,
+          state: 'read',
+          deliveredTime: null, // You can set this if needed
+          readTime: Date.now(),
+        });
+      }
+  
+      // Save the updated message
+      await message.save();
+      // console.log(message,'three')
+      res.status(200).json({message:message});
+    } catch (error) {
+      console.error("Error in marking group message as read:", error.message);
+      res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+    }
+  };
+  export const searchMessages = async (req, res) => {
+    try {
+      const { conversationId, searchTerm } = req.body;
+      const messages = await GroupMessage.aggregate([
+        {
+          $search: {
+            index: "default", // The name of the Atlas Search index
+            text: {
+              query: 'U2FsdGVkX1',
+              path: "text",
+              fuzzy: {
+                maxEdits: 2, 
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "conversations", // The collection name for Conversation
+            localField: "_id",
+            foreignField: "messages", // Assuming 'messages' field in Conversation contains message IDs
+            as: "conversationData"
+          }
+        },
+        {
+          $match: { "conversationData._id": new mongoose.Types.ObjectId(conversationId) }
+        },
+        {
+          $limit: 50 // Limit the number of search results
+        }
+      ]);
+      const matchingMessages = messages.filter((message) => {
+              try {
+                const decryptedText = decryptMessage(message.text, process.env.GROUP_CHAT_SECRET_KEY);
+                message.text=decryptedText;
+                return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
+              } catch (error) {
+                console.error('Error decrypting message:', error);
+                return false; 
+              }
+            });
+      //  console.log(matchingMessages);     
+      res.status(200).json(matchingMessages);
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      res.status(500).json({ error: "INTERNAL SERVER ERROR" });
+    }
+  };
+  

@@ -1,8 +1,8 @@
 import React from 'react';
-import reply from '../assets/WP.svg'
+import reply from '../assets/a3.svg'
 const LoadingScreen = ({ isFading }) => (
   <div style={{ ...loadingScreenStyle, opacity: isFading ? 0 : 1 }}>
-    <img src={reply} className='h-fit w-fit mt-0 ' alt="Loading..." />
+    <img src={reply}  alt="Loading..." />
   </div>
 );
 const loadingScreenStyle = {

@@ -13,6 +13,10 @@ const StorySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  media: {
+    type: String,
+    default: '',
+  },
   backgroundColor: {
     type: String,
     default: 'yellow',

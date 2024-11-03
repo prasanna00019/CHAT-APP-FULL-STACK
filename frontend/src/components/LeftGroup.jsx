@@ -5,12 +5,15 @@ import toast, { Toaster } from 'react-hot-toast';
 import RightGroup from './RightGroup';
 import { SocketContext } from '../context/SocketContext';
 import { useStatusContext } from '../context/StatusContext';
-
+import wallpaper from '../assets/wallpaper2.jpeg'
+import { decryptMessage, encryptMessage } from '../helper_functions';
+import useLogout from '../hooks/useLogout';
 const LeftGroup = ({ userId }) => {
   const [groups, setGroups] = useState([]);
   const [open, setOpen] = useState(false);  // Modal state
   const [groupName, setGroupName] = useState('');
   const { messages, setMessages } = useStatusContext();
+  const {GROUP_CHAT_SECRET_KEY}=useLogout()
   const [groupDescription, setGroupDescription] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -105,21 +108,24 @@ const LeftGroup = ({ userId }) => {
   };
 
   return (
-    <div className='flex max-w-full'>
-      <div style={{ padding: '20px' }} className='
+    <div className='flex max-w-full' >
+      <div style={{ padding: '20px' ,backgroundImage: `url(${wallpaper})`, backgroundSize: 'cover'}} className='
     shadow-2xl shadow-green-400 rounded-lg min-w-[300px] mr-[100px] flex flex-col border h-full border-black bg-white'>
         <Toaster />
         <h2 className='font-bold'>Your Groups</h2>
         <ul>
           {groups.map(group => (
-            <li key={group._id} className='border border-black p-2 mt-4' onClick={() =>
+            <li key={group._id} className='border border-black p-2 mt-4 bg-white' onClick={() =>
               setClickedGroupId(group._id)}>
               {group.name}
-              lastMessage:{messages[messages.length - 1]?.text || 'No message yet...' || lastMessage[group._id]}
+             {/* lastMessage:{ decryptMessage(messages[messages.length - 1]?.text,GROUP_CHAT_SECRET_KEY) || 'No message yet...' ||decryptMessage(lastMessage[group._id],GROUP_CHAT_SECRET_KEY)} */}
             </li>
 
           ))}
         </ul>
+        <div className='mt-5 border border-gray-400'>
+          YOUR MESSAGES ARE END TO END ENCRYTPED
+        </div>
         <Button
           variant="contained"
           color="primary"

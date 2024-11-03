@@ -34,7 +34,6 @@ const RightMessage = () => {
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null); // State to track the message being edited
   const [editedText, setEditedText] = useState(''); // State to store edited text
-  // const [editClick,setEditClick] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [reactionOptions,setReactionOptions]=useState(null);
   const [messageInfo, setMessageInfo] = useState({ deliveredTime: null, readTime: null });
@@ -154,7 +153,6 @@ const [searchResults, setSearchResults] = useState([]);
         entries.forEach(async (entry) => {
           if (entry.isIntersecting) {
             const messageId = entry.target.getAttribute('data-message-id');
-            
             try {
               const senderId = entry.target.getAttribute('data-message-sender');
               if (!readStatus[messageId] && senderId !== Authuser._id) {

@@ -5,6 +5,7 @@ import { SocketContext } from '../context/SocketContext';
 import { useStatusContext } from '../context/StatusContext';
 import CryptoJS from 'crypto-js';
 import useLogout from '../hooks/useLogout';
+import wallpaper from '../assets/wallpaper2.jpeg';
 import RightMessage2 from './RightMessage2';
 const LeftUserDisplay = ({userId}) => {
   const {logout,loading}=useLogout();
@@ -33,7 +34,6 @@ const LeftUserDisplay = ({userId}) => {
       memoizedUsers.map((user) => {
         console.log(user, ' from left')
         if (user._id === userId) {
-          console.log('inside if from left', ' from left')
           user.online = online;
           user.lastSeen = lastSeen;
         }
@@ -118,7 +118,8 @@ const LeftUserDisplay = ({userId}) => {
   }
   return (
       <>
-    <div className="w-[300px] p-2 pl-1 mt-[-20px] bg-white rounded-lg border-blue-300 border shadow-xl shadow-blue-300  ">
+    <div  style={{backgroundImage:`url(${wallpaper})`}}
+     className="w-[300px] p-2 pl-1 mt-[-20px] bg-white rounded-lg border-blue-300 border shadow-xl shadow-blue-300  ">
       <button onClick={handleLogout} disabled={loading} className="font-bold mt-4 px-4 py-2 bg-orange-400 mb-4 text-white rounded shadow-lg shadow-red-200">
         LOGOUT
       </button>
@@ -133,7 +134,7 @@ const LeftUserDisplay = ({userId}) => {
             onClick={() => handleUserClick(user)}
             >
               <div className='flex gap-1'>
-                <img src={user.profilePic ? user.profilePic : user_empty} width={50} height={20}
+                <img src={user.profilePic!=='' ? user.profilePic : user_empty} width={50} height={20}
                   className='rounded-full' alt="" />
                 <p className='text-xl font-bold'>{user.id === Authuser._id ? `${user.username} (You)` : user.username}</p>
                 <span className={`ml-2 ${user.online ? 'text-green-500' : 'text-red-500'}`}>

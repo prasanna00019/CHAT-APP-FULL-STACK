@@ -9,15 +9,18 @@ import UserProfile from './components/UserProfile';
 import { useAuthContext } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import LoadingScreen from './components/LoadingScreen';
+import { decryptMessage, encryptMessage } from './helper_functions';
+import useLogout from './hooks/useLogout';
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFading, setIsFading] = useState(false);
+ const {GROUP_CHAT_SECRET_KEY}=useLogout();
+//  {console.log(decryptMessage('U2FsdGVkX18VnLXaqwUAyx2vaJ6R4MrwERMZiTZPTZJ43Ta3e1dYPc9YhhXG/G5Y',GROUP_CHAT_SECRET_KEY))}
   useEffect(() => {
     // Start loading process
     const loadTimer = setTimeout(() => {
       setIsFading(true); // Trigger the fade-out effect
     }, 4000);
-
     // Remove loading screen after fade-out
     const fadeTimer = setTimeout(() => {
       setIsLoading(false);
