@@ -96,7 +96,16 @@ const RightStory = () => {
       }
     });
     socket.on('updateLikes', (data) => {
-      console.log(data, ' likes data');
+      // console.log(data, ' likes data');
+      setStories((prevStories) => {
+        const updatedStories = prevStories.map((story) => {
+          if (story._id === data._id) {
+            return data;
+          }
+          return story;
+        });
+        return updatedStories;
+      })
       if (stories[currentStoryIndex]?._id === data._id) {
         toast.success(`LIKES UPDATED`, {
           style: {

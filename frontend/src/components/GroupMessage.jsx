@@ -10,6 +10,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import Radio from '@mui/material/Radio';
 import bluetick from '../assets/blue-double.png'
 import normaltick from '../assets/normal-double.png';
+import forward from '../assets/forward1.png'
 import info from '../assets/information.png'
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -17,18 +18,24 @@ import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField'; // For editing message text
 import reply from '../assets/reply.png'
 import reaction from '../assets/reaction (1).png'
-import { Modal} from '@mui/material';
+import { IconButton, Modal} from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
 import { decryptMessage, encryptMessage } from '../helper_functions';
+import CloseIcon from '@mui/icons-material/Close';
 import useLogout from '../hooks/useLogout';
+import Poll from './Poll';
+import ForwardMessageGroup from './ForwardMessageGroup';
 const GroupMessage =forwardRef((props,ref) => {
 const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs,
   setShowMessageInfo,showMessageInfo, dataMessageId,
-  dataMessageSender
+  dataMessageSender ,groups
 }=props;
 const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const { socket } = useContext(SocketContext);
   const {userMap}=useAuthContext();
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const openForwardModal = () => setShowForwardModal(true);
+  const closeForwardModal=() => setShowForwardModal(false);
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinDuration, setPinDuration] = useState(''); // e.g., "24 hours", "7 days"
   const [currentMessage, setCurrentMessage] = useState(message);
@@ -40,11 +47,20 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const [openReaction, setOpenReaction] = useState(false);
   // Open and close modals handlers
   const handlePinClick = () =>setIsPinDialogOpen(true);
-  
   const handleCloseDialog = () => setIsPinDialogOpen(false);
   const handleDurationChange = (event) => setPinDuration(event.target.value);
   const openDeleteModal = () => setShowModal(true);
   const closeDeleteModal = () => setShowModal(false);
+
+  const [open, setOpen] = useState(false);
+
+  const handleClickOpenImage = () => {
+    setOpen(true);
+  };
+
+  const handleCloseImage = () => {
+    setOpen(false);
+  };
   const handlePinMessage = async (status) => {
    if(!status){
     let expirationTime;
@@ -158,11 +174,10 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
         console.error('Error fetching message:', error);
       }
     };
-
     if (message) {
       fetchMessage(message._id);
     }
-  }, [message, socket]);
+  }, [message.text]);
   useEffect(()=>{
    socket.on('MarkReadGroup',(data)=>{
     console.log(data,' from group UI read');
@@ -186,10 +201,10 @@ return ()=>{
     socket.emit('AddReactionGroup',{emoji,messageId,userId,groupId});
   }
   const emojiList = ["😊", "😂", "😍", "❤", "✨", "😇", "👏", "💛", "🥹", "😞", "🫶", "💥", "👍"];
-  const allDelivered = currentMessage?.status?.every(status => status.state === 'delivered');
-  const tickIcon = allDelivered ? '✅' : '✖️';
   return (
     <>
+              <img src={forward} height={20} width={20} alt="" onClick={openForwardModal}/>
+
       {
         !message.deletedFor.includes(userId) &&
         <div ref={ref}
@@ -197,7 +212,22 @@ return ()=>{
         data-message-sender={dataMessageSender} 
         className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }>
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
-
+          {currentMessage.media && <img src={currentMessage.media} width={200} height={50} onClick={handleClickOpenImage}/>} 
+          {/* <Poll/> */}
+          <Dialog open={open} onClose={handleClose} maxWidth="md">
+        <DialogActions>
+          <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogActions>
+        <DialogContent>
+          <img
+            src={currentMessage.media}
+            alt="Large View"
+            style={{ width: '100%', height: 'auto' }}
+          />
+        </DialogContent>
+      </Dialog>
           <p>{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
        {/* {console.log(message.status)} */}
           <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
@@ -228,9 +258,10 @@ return ()=>{
               <Button variant="contained" color="secondary" onClick={openDeleteModal}>
                 DELETE
               </Button>
-              <Button onClick={openEditModal} variant="contained" color="primary">
+             
+              { message.sender ===userId && <Button onClick={openEditModal} variant="contained" color="primary">
                 EDIT
-              </Button>
+              </Button>}
             </>
           )}
           <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
@@ -255,7 +286,8 @@ return ()=>{
           <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
             scrollToMessage(message._id)
           }} alt="" />
-                        }
+          
+                        }              
            <Dialog open={openReaction} onClose={handleClose}>
       <DialogTitle>Select an Emoji Reaction</DialogTitle>
       <DialogContent>
@@ -317,6 +349,7 @@ return ()=>{
           </div>
         }
       </Modal>
+      <ForwardMessageGroup open={showForwardModal} handleClose={closeForwardModal} groups={groups} message={message}/>
           {/* Edit Modal */}
           <Dialog open={showEditModal} onClose={closeEditModal}>
             <DialogTitle>Edit Message</DialogTitle>

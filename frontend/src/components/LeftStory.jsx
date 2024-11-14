@@ -14,7 +14,7 @@ const LeftStory = ({userId}) => {
   const [loading, setLoading] = useState(false);
   const [s1, sets1] = useState(false)
   const [image, setImage] = useState(null);
-const [imageURL, setImageURL] = useState('');
+// const [imageURL, setImageURL] = useState('');
   const { Authuser } = useAuthContext();
   const [allUsers, setAllUsers] = useState([]);
   const [open,setOpen]= useState(false);
@@ -125,12 +125,14 @@ const handleToggleParticipant = (userId) => {
   }
 };
  const handleBroadcast=async()=>{
+   let url='';
   if (image) {
     const imageRef = ref(storage, `images/${image.name}`);
     await uploadBytes(imageRef, image);
-    const url = await getDownloadURL(imageRef);
+    url = await getDownloadURL(imageRef);
     console.log(url);
-    setImageURL(url);
+    // setImageURL(url);
+    // console.log(imageURL,' image url');
   }
   const selectedUsers = allUsers.filter((user) => selectedParticipants.includes(user.id));
     const visibility = selectedUsers.map((user) => user._id);
@@ -139,7 +141,7 @@ const handleToggleParticipant = (userId) => {
       userId: Authuser._id,
       username: Authuser.username,
       content: newStoryContent,
-      media: imageURL,
+      media: url,
       visibility,
     }
     );

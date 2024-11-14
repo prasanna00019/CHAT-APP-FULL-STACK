@@ -8,6 +8,7 @@ import userRoutes from './routes/UserRoutes.js';
 import messageRoutes from './routes/MessageRoutes.js';
 import StoryRoutes from './routes/StoryRoutes.js'
 import GroupRoutes from './routes/GroupRoutes.js'
+import cron from 'node-cron'
 import path from "path";
 import connectDB from "./DB/connectDB.js";
 import bcrypt from 'bcryptjs';
@@ -16,7 +17,6 @@ import GroupMessage from "./models/GroupMessageModel.js";
 import User from "./models/UserModel.js";
 import Message from "./models/MessageModel.js";
 import CryptoJS from "crypto-js";
-import { read } from "fs";
 function encryptMessage(message, secretKey) {
   return CryptoJS.AES.encrypt(message, secretKey).toString();
 }
@@ -91,6 +91,8 @@ const updateUserStatusInDatabase = async (userId, status) => {
 io.on('connection', async (socket) => {
   const userId = socket.handshake.query.userId;
   const Authuser = socket.handshake.query.Authuser;
+  console.log(userId,' ... userId');
+  console.log(Authuser,' ... AuthUserId');
   socket.on('joinGroup', (groupId) => {
     socket.join(groupId);
   });
@@ -102,9 +104,11 @@ io.on('connection', async (socket) => {
         body: JSON.stringify({ message: messageData.message, replyTo: messageData.reply })
       })
       const data = await res.json();;   
+      // console.log(data, ' from server.js ')
       const receiverSocket = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === messageData.receiver
       );
+      console.log(userSocketMap, ' from send message');
       socket.emit('receiveMessage', data);
       if (receiverSocket) {
         io.to(receiverSocket).emit('receiveMessage', data);
@@ -114,10 +118,31 @@ io.on('connection', async (socket) => {
       console.log(e)
     }
   })
-  socket.on('sendMessageGroup', async (messageData) => {
-    console.log('Message received:', messageData);
+  socket.on('sendMessageGroup', async (messageData,delay) => {
+    console.log('Message received:', messageData,delay);
     // Broadcast message to the group
     try {
+     if(delay!==0){
+      const targetTime = new Date(Date.now() + delay);
+  const targetMinutes = targetTime.getMinutes();
+  const targetSeconds = targetTime.getSeconds();
+
+  // Schedule a cron job to execute at the target time
+  const testCron = cron.schedule(`${targetSeconds} ${targetMinutes} * * * *`, async() => {
+    console.log('Cron job executed at:', new Date().toISOString());
+    const response = await fetch(`http://localhost:5000/group/sendMessageGroup/${messageData.sender}/${messageData.group}`, {
+      method: 'POST'
+      , headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageData, replyTo: messageData.replyTo })
+    }
+    );
+    const savedMessage = await response.json();
+    io.to(messageData.group).emit('receiveMessage', savedMessage);
+    io.to(messageData.group).emit('lastMessageGroup', savedMessage);
+    testCron.stop(); // Stop the cron job after execution to prevent repeated runs
+  });
+     } 
+     else{
       const response = await fetch(`http://localhost:5000/group/sendMessageGroup/${messageData.sender}/${messageData.group}`, {
         method: 'POST'
         , headers: { "Content-Type": "application/json" },
@@ -128,6 +153,7 @@ io.on('connection', async (socket) => {
       io.to(messageData.group).emit('receiveMessage', savedMessage);
       io.to(messageData.group).emit('lastMessageGroup', savedMessage);
     }
+  }
     catch (error) {
       console.error('Error saving message:', error);
     }
@@ -178,6 +204,22 @@ io.on('connection', async (socket) => {
     } catch (error) {
       console.error('Error deleting message for everyone:', error);
     }
+  });
+  socket.on('cronTesting', async (delay) => {
+    console.log('Received delay for cron test:', delay, 'ms');
+  console.log('recieved request at ', new Date(Date.now()).toLocaleTimeString());
+    // Calculate the target time by adding delay to the current timestamp
+    const targetTime = new Date(Date.now() + delay);
+    const targetMinutes = targetTime.getMinutes();
+    const targetSeconds = targetTime.getSeconds();
+  
+    // Schedule a cron job to execute at the target time
+    const testCron = cron.schedule(`${targetSeconds} ${targetMinutes} * * * *`, () => {
+      console.log('Cron job executed at:', new Date(Date.now()).toLocaleTimeString());
+      testCron.stop(); // Stop the cron job after execution to prevent repeated runs
+    });
+  
+    console.log('Scheduled cron to execute at:', targetTime.toLocaleTimeString());
   });
   socket.on('deleteForEveryoneOnetoOne', async (messageId, userId) => {
     try {
@@ -408,6 +450,7 @@ io.on('connection', async (socket) => {
       })
       if (res.ok) {
         const data = await res.json();
+        console.log(data,' from editOneToOne');
         const receiverSocketId = Object.keys(userSocketMap).find(
           (key) => userSocketMap[key] === userId
         );
@@ -451,15 +494,12 @@ io.on('connection', async (socket) => {
       const user= await User.findById(userId);
       user.ShowOnline=onlineStatus; 
       await user.save();
-      // console.log(user);
       io.emit('UpdatedOnlineStatus',user);
     }
     catch(err){ console.log(err); }
   });
   socket.on('ReadMessageGroup',async({messageId,senderId,readingUserId})=>{
      try{
-      // console.log(messageId,readingUserId,' from users !!! ');
-      // console.log(senderId,' group ID')
       const res= await fetch(`http://localhost:5000/group/MarkRead/${messageId}/${readingUserId}`, {
         method: 'PUT',
         headers: {
@@ -467,7 +507,6 @@ io.on('connection', async (socket) => {
         },});
         const data=await res.json();
       if(data.message!=='N/A'){  
-        console.log(data.message,' from groupRead .. . .');
        io.to(senderId).emit('MarkReadGroup',data.message);
       }
      }
@@ -487,6 +526,7 @@ io.on('connection', async (socket) => {
       const receiverSocket = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === senderId
       );
+      socket.emit('MarkReadOneToOne', data.message);  // Emit to sender
       if (receiverSocket) {
         io.to(receiverSocket).emit('MarkReadOneToOne', data.message);
       }
@@ -501,7 +541,6 @@ io.on('connection', async (socket) => {
       const user= await User.findById(userId);
       user.ReadReceipts=readReceipts;
       await user.save();
-      console.log(user);
       io.emit('UpdatedReadReceipts',user);
     }
     catch(err){ console.log(err); }
@@ -509,10 +548,8 @@ io.on('connection', async (socket) => {
   socket.on('ProfilePhotoChanged',async({Authuser,downloadURL})=>{
     try{
       const user= await User.findById(Authuser._id);
-      console.log(typeof(downloadURL),downloadURL);
        user.profilePic=downloadURL;
        await user.save();  
-       console.log(user);
       io.emit('ChangedPhoto',{user,downloadURL})
     }
     catch(err){ }
@@ -523,6 +560,11 @@ io.on('connection', async (socket) => {
     updateUserStatusInDatabase(Authuser, { online: true, lastSeen: null });
     updateMessageToDelivered(Authuser);
     socket.on('register', (userId) => {
+      for (const [socketId, mappedUserId] of Object.entries(userSocketMap)) {
+        if (mappedUserId === userId) {
+          delete userSocketMap[socketId];
+        }
+      }
       userSocketMap[socket.id] = userId;
     })
     if (userId !== null) {
@@ -578,7 +620,6 @@ io.on('connection', async (socket) => {
 
   });
   socket.on('deleteStory', async (storyId) => {
-    console.log('delete socket working well ... ')
     try {
       await Story.findByIdAndDelete(storyId); 
       io.emit('storyDeleted', storyId); 

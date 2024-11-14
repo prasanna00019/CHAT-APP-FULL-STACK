@@ -10,7 +10,7 @@ const Viewers = ({ viewers, isLikedByUser ,NumLikes}) => {
             <span>{viewer.userId}</span>
             <span> {new Date(viewer.viewedAt).toLocaleString()}</span>
           </div>
-          <img src={NumLikes ? GreenHeart : ''} width={50} height={10} alt="" />
+          <img src={isLikedByUser ? GreenHeart : ''} width={50} height={10} alt="" />
         </li>
       )) : "No Viewers"}
 

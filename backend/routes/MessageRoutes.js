@@ -12,7 +12,7 @@ router.put('/edit/:messageId',editMessage);
 router.put('/starred/:messageId',starMessage);
 router.put('/pinned/:messageId',pinMessage);
 router.put('/reaction/:messageId/:userId/',ReactMessage);
-router.get('/last-message/:userId1/:userId2', getLastMessage);
+router.get('/last-message/:authUserId', getLastMessage);
 router.put('/Message-delivered/:userId',changeMessageStatusToDelivered)
 router.put('/Message-read/:messageId',markMessageAsRead);
 router.post('/search',searchMessages);

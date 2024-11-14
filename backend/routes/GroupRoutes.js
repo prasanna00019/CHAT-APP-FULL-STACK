@@ -1,5 +1,5 @@
 import express from 'express'
-import { createGroup, deleteGroup, getGroupById, getGroups, getLastMessageOfAllGroups, getMessagesByGroupId } from '../controllers/GroupControllers.js';
+import { createGroup, deleteGroup, getGroupById, getGroups, getLastMessageOfAllGroups, getMessagesByGroupId, getUserGroupMessagesForTrending } from '../controllers/GroupControllers.js';
 import { changeGroupMessageStatusToDelivered, deleteMessageById, deleteMessageForMe, getMessageById, markGroupMessageAsRead, ReactMessage, searchMessages, sendMessageGroup } from '../controllers/GroupMessageControllers.js';
 const router = express.Router();
 router.post('/create-group/',createGroup);
@@ -16,4 +16,5 @@ router.patch('/deleteMessageForMe/:messageId/:userId',deleteMessageForMe);
 router.put('/reaction/:messageId/:userId',ReactMessage);
 router.put('/MarkRead/:messageId/:authUserId',markGroupMessageAsRead);
 router.post('/search',searchMessages);
+router.get('/trending-messages/:authUserId',getUserGroupMessagesForTrending);
 export default router;

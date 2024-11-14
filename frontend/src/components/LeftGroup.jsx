@@ -6,8 +6,10 @@ import RightGroup from './RightGroup';
 import { SocketContext } from '../context/SocketContext';
 import { useStatusContext } from '../context/StatusContext';
 import wallpaper from '../assets/wallpaper2.jpeg'
-import { decryptMessage, encryptMessage } from '../helper_functions';
+import { decryptMessage} from '../helper_functions';
 import useLogout from '../hooks/useLogout';
+import Trending from './Trending';
+import { useAuthContext } from '../context/AuthContext';
 const LeftGroup = ({ userId }) => {
   const [groups, setGroups] = useState([]);
   const [open, setOpen] = useState(false);  // Modal state
@@ -17,22 +19,20 @@ const LeftGroup = ({ userId }) => {
   const [groupDescription, setGroupDescription] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const {userMap,Authuser}=useAuthContext();
+  const {GroupMap, setGroupMap} = useAuthContext()
   const [clickedGroupId, setClickedGroupId] = useState(null);
-  const { socket } = useContext(SocketContext);
   const [lastMessage, setlastMessage] = useState({})
-  useEffect(() => {
-    socket.on('lastMessageGroup', (data) => {
-      setlastMessage((prevLastMessage) => ({
-        ...prevLastMessage,
-        [data.group]: data.text,
-      }));
-    });
-    return () => socket.off('lastMessageGroup');
-  }, [socket]);
   const fetchGroups = async () => {
     try {
       const res = await axios.get(`http://localhost:5000/group/get-groups/${userId}`);
       setGroups(res.data);
+      const mappedGroups = res.data.reduce((acc, group) => {
+        acc[group._id] = group.name; // or use `user` if you want the full object
+        return acc;
+      }, {});
+      setGroupMap(mappedGroups);
+      console.log(mappedGroups);
     } catch (error) {
       console.error('Error fetching groups:', error);
     }
@@ -40,6 +40,7 @@ const LeftGroup = ({ userId }) => {
   useEffect(() => {
     fetchGroups();
   }, [userId]);
+ 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -53,12 +54,12 @@ const LeftGroup = ({ userId }) => {
       try {
         const res = await axios.get('http://localhost:5000/group/getLastMessage')
         const lastMessageMap = res.data.reduce((acc, group) => {
-          console.log(group._id, group.lastMessage.text)
-          acc[group._id] = group.lastMessage.text;
+          // console.log(group._id, group.lastMessage.text,group)
+          acc[group._id] = group.lastMessage?.text;
+          // acc[group?.sender]=group.lastMessage?.sender
           return acc;
         }, {});
         setlastMessage(lastMessageMap);
-        console.log(lastMessage)
       }
       catch (error) {
         console.log(error)
@@ -67,6 +68,26 @@ const LeftGroup = ({ userId }) => {
     fetchUsers();
     lastMessageOfAllGroups();
   }, []);
+  useEffect(()=>{
+    const lastMessageOfAllGroups = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/group/getLastMessage')
+        const lastMessageMap = res.data.reduce((acc, group) => {
+          console.log(group._id, group)
+          acc[group._id] = group.lastMessage?.text;
+          // acc[group.sender]=group?.lastMessage?.sender
+          return acc;
+        }, {});
+        // console.log(lastMessage)
+        setlastMessage(lastMessageMap);
+        console.log(lastMessage)
+      }
+      catch (error) {
+        console.log(error)
+      }
+    }
+    lastMessageOfAllGroups();
+  },[messages])
   const handleClickOpen = () => {
     setOpen(true);
   }
@@ -106,7 +127,6 @@ const LeftGroup = ({ userId }) => {
       toast.error(error.response.data.message)
     }
   };
-
   return (
     <div className='flex max-w-full' >
       <div style={{ padding: '20px' ,backgroundImage: `url(${wallpaper})`, backgroundSize: 'cover'}} className='
@@ -115,17 +135,20 @@ const LeftGroup = ({ userId }) => {
         <h2 className='font-bold'>Your Groups</h2>
         <ul>
           {groups.map(group => (
-            <li key={group._id} className='border border-black p-2 mt-4 bg-white' onClick={() =>
+            <li key={group._id} className='border border-black p-2 mt-4 bg-white flex flex-col gap-1' onClick={() =>
               setClickedGroupId(group._id)}>
-              {group.name}
-             {/* lastMessage:{ decryptMessage(messages[messages.length - 1]?.text,GROUP_CHAT_SECRET_KEY) || 'No message yet...' ||decryptMessage(lastMessage[group._id],GROUP_CHAT_SECRET_KEY)} */}
+             <p> {group.name}</p>
+       <p> {  decryptMessage(lastMessage?.[group._id], GROUP_CHAT_SECRET_KEY) || 
+  decryptMessage(messages?.[messages.length - 1]?.text, GROUP_CHAT_SECRET_KEY) || 
+  'No message yet...' }</p>
+  {console.log(lastMessage)}
             </li>
-
           ))}
         </ul>
         <div className='mt-5 border border-gray-400'>
           YOUR MESSAGES ARE END TO END ENCRYTPED
         </div>
+        <Trending clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId} />
         <Button
           variant="contained"
           color="primary"
@@ -152,9 +175,12 @@ const LeftGroup = ({ userId }) => {
               value={groupDescription}
               onChange={(e) => setGroupDescription(e.target.value)}
             />
+            {/* {console.log(userId)} */}
             <h4>Select Participants:</h4>
-            {allUsers.filter((user) => user._id !== userId).map(user => (
-              <ListItem key={user.id} button onClick={() => handleToggleParticipant(user.id)}>
+            {
+            //  console.log(allUsers.filter((user) => user._id !== userId))
+            allUsers.filter((user) => user._id !== userId).map(user => (
+              <ListItem key={user._id} button onClick={() => handleToggleParticipant(user.id)}>
                 <ListItemIcon>
                   <Checkbox
                     edge="start"

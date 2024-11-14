@@ -10,15 +10,24 @@ import wallpaper from '../assets/wallpaper2.jpeg'
 import DotsMenu from './DotsMenu';
 import MessageInfo from './MessageInfo';
 import useLogout from '../hooks/useLogout';
+import scrolldown from '../assets/Scroll-down.png'
 import { decryptMessage, encryptMessage } from '../helper_functions';
-const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMessage, setlastMessage }) => {
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import TrendingMessages from './TrendingMessages';
+import ScheduleSend from './ScheduleSend';
+const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   const { socket } = useContext(SocketContext) // Replace with your backend URL
+  const storage = getStorage();
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+
   const [currentGroupInfo, setCurrentGroupInfo] = useState(null);
   const { messages, setMessages } = useStatusContext();
   const typingTimeout = useRef(null);
+  const [image, setImage] = useState(null);
   const{GROUP_CHAT_SECRET_KEY}=useLogout();
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
-  const messageRefs = useRef([]); // References to message elements
+  // const messageRefs = useRef([]); // References to message elements
+  const {messageRefs}=useAuthContext();
   const { userMap,Authuser } = useAuthContext();
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [searchBar,setSearchBar]=useState(false)
@@ -26,7 +35,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showStarredMessages, setShowStarredMessages] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
-  // console.log(userMap)
+  const chatContainerRef = useRef(null); // Reference for the chat container
   const [replyingTo, setReplyingTo] = useState(null);
   const [newMessage, setNewMessage] = useState('');
   const [currentTypingUser, setCurrentTypingUser] = useState(null);
@@ -34,6 +43,47 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   const [loading, setLoading] = useState(true);
   const closeInfoModal = () => setShowModal(false);
   const openInfoModal = () => setShowModal(true);
+  const [delay,setDelay]=useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    const count = messages.filter((message) => {
+      const userStatus = message.status.find(
+        (status) => status.userId === Authuser._id
+      );
+      return userStatus && userStatus.state !== 'read' && message.sender !== Authuser._id;
+    }).length;
+    setUnreadCount(count);
+  }, [messages, Authuser._id]);
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+  
+      // If the user is not at the bottom, show the button
+      if (scrollHeight - scrollTop > clientHeight + 100) {
+        setIsScrolledUp(true);
+      } else {
+        setIsScrolledUp(false);
+      }
+    };
+  
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer){
+       chatContainer.addEventListener('scroll', handleScroll);
+    }  
+    // Cleanup the event listener on component unmount
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('scroll', handleScroll);
+    }
+        };
+  }, [clickedGroupId]);
+  const scrollToBottom = () => {
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
   const cancelReply = () => {
     setReplyingTo(null);
   };
@@ -91,6 +141,11 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     renderSearchResults()}
   </div>
   );
+  // Count and sort hashtags
+
+// console.log(getTrendingHashtags(messages_temp));
+// Example render function
+
   // Establish socket connection and join the group when clickedGroupId changes
   useEffect(() => {
     if (clickedGroupId) {
@@ -127,6 +182,9 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
       fetchMessages();
     }
   }, [clickedGroupId]);
+  const handleImageChange = (event) => {
+    setImage(event.target.files[0]);
+  };
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -163,20 +221,25 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   // Listen for new messages from the server
   useEffect(() => {
     socket.on('receiveMessage', (messageData) => {
-      console.log('New message received:', messageData);
+      // console.log('New message received:', messageData);
+     if(clickedGroupId===messageData.group){ 
       setMessages((prevMessages) => [...prevMessages, messageData]);
+     }
+     setMessages((prevMessages) => prevMessages.map((msg) => msg._id === messageData._id ? messageData : msg));
     });
     socket.on('typingGroup', (data) => {
       // console.log(data.sender,'from rightgroup.jsx typing .... ');
+    // if(data.group===clickedGroupId){
       setCurrentTypingUser(data.sender);
       // update UI to show that someone is typing
       setIsTyping(true);
+    // }
     });
-
     socket.on('stopTypingGroup', (data) => {
-      // console.log(data,'from rightgroup.jsx stop typing .... ');
-      // update UI to show that someone has stopped typing
+      // if(data.group===clickedGroupId){
+      setCurrentTypingUser(null);
       setIsTyping(false);
+    // }
     });
     socket.on('messageDeletedForMe', (data) => {
       console.log(data);
@@ -229,6 +292,8 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     };
   }, [socket]);
   // Handle sending new message
+  
+ 
   const starredResultsDiv = (
     <div className="starred-results border border-gray-800 p-2">
       <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
@@ -266,8 +331,19 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
     }, 1000); // Stop typing after 1 second of inactivity
   };
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '') return;
-    console.log(currentGroupInfo)
+    if (newMessage.trim() === '' && !image)
+      { 
+      return 
+      }
+  var url='';
+  if (image) {
+    const imageRef = ref(storage, `GroupImages/${image.name}`);
+    await uploadBytes(imageRef, image);
+    url = await getDownloadURL(imageRef);
+    console.log(url);
+    
+  }
+    // console.log(currentGroupInfo)
     const messageData = {
       text: encryptMessage(newMessage, GROUP_CHAT_SECRET_KEY),
       conversationId: currentGroupInfo.conversationId,
@@ -276,10 +352,12 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
       group: clickedGroupId,
       replyTo: replyingTo || null,
       sender: userId,
+      media:url ||"",
     };
     // Emitting the message to the server
-    socket.emit('sendMessageGroup', messageData);
+    socket.emit('sendMessageGroup', messageData, delay);
     setNewMessage('');
+    setImage(null);
   };
   const scrollToMessage = (messageId) => {
     // Find the index of the message with the given messageId
@@ -318,7 +396,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   return (
   //  <div className='flex gap-3 min-w-[780px]'>
     <div className='bg-white h-full min-w-[760px] shadow-xl shadow-green-300
-    rounded-3xl  mr-[300px]  flex ' style={{backgroundImage: `url(${wallpaper})`}}>
+    rounded-3xl  mr-[300px] ml-44  flex ' style={{backgroundImage: `url(${wallpaper})`}}>
       <div className='min-w-[760px]'>
       {/* Group Info */}
       {currentGroupInfo ? (
@@ -337,6 +415,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
   />
   <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
 </div>}
+<button onClick={()=>socket.emit('cronTesting',1200)}>h</button>
       <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
             } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}
             IsGroupInfo={true} groupId= {currentGroupInfo._id} />
@@ -359,12 +438,12 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
       )}
 
       {/* Message Container */}
-      <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: '400px' }}>
-        {loading ? (
+      <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: '400px' }}>
+        { loading  ? (
           <p>Loading messages...
 
           </p>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && clickedGroupId ? (
           <div>No messages found in this group.
 
           </div>
@@ -375,6 +454,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
             messageRefs={messageRefs} setShowMessageInfo={setShowMessageInfo} showMessageInfo={showMessageInfo}
             dataMessageId={msg._id}  
             dataMessageSender={msg.group}
+            groups={groups}
             />
           ))
         )}
@@ -386,7 +466,20 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
             <button className='hover:cursor-pointer' onClick={cancelReply}>Cancel</button>
           </div>
         )}
-        <TextField 
+          {isScrolledUp && (
+             <>
+            <span className='scroll-to-bottom-button1'>{unreadCount}</span> 
+        <button
+        className="scroll-to-bottom-button"
+        onClick={scrollToBottom}
+        >
+        <img src={scrolldown} height={20} width={20} alt="" />
+      </button>
+        </> 
+    )}
+        {clickedGroupId ?  <>
+              <input type="file" onChange={handleImageChange} />
+              <TextField 
           label="Type your message..."
           fullWidth
           value={newMessage}
@@ -399,7 +492,10 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
           />
         <Button onClick={handleSendMessage} variant="contained" color="primary">
           Send
-        </Button>
+        </Button> 
+       <ScheduleSend setDelay={setDelay}/>
+          </> : "CLICK ON ANY GROUP TO START CHATTING"
+}
         <Dialog open={showModal} onClose={closeInfoModal}>
           <DialogTitle>GROUP INFO</DialogTitle>
           <DialogContent>
@@ -451,6 +547,7 @@ const RightGroup = ({ clickedGroupId, setClickedGroupId, groups, userId, lastMes
         searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages}
         />
       }
+
     </div>
       // </div> 
   );

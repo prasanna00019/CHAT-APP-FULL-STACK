@@ -2,52 +2,89 @@ import React, { useContext, useEffect, useRef, useState } from 'react'
 import { SocketContext } from '../context/SocketContext'
 import { useAuthContext } from '../context/AuthContext';
 import { useStatusContext } from '../context/StatusContext';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import { Button, TextField } from '@mui/material';
 import Message from './Message';
 import DotsMenu from './DotsMenu';
 import CryptoJS from 'crypto-js';
 import wallpaper from '../assets/wallpaper2.jpeg'
 import PinEntry from './PinEntry';
+import scrolldown from '../assets/Scroll-down.png'
 import MessageInfo from './MessageInfo';
-const RightMessage2 = () => {
+import TrendingMessages from './TrendingMessages';
+const RightMessage2 = ({newMessage1, setNewMessage1}) => {
   const { socket, registerUser } = useContext(SocketContext);
   const { users, clickedId, setclickedId, Authuser, setAuthuser } = useAuthContext();
   const [replyingTo, setReplyingTo] = useState(null);
+  const chatContainerRef = useRef(null); // Reference for the chat container
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [receiverId, setReceiverId] = useState('');
   const secretKey = '!@#$%^y7gH*3xs';
-  // console.log(Authuser)
   const [selectedMessages, setSelectedMessages] = useState([]);
 const [isSelectionMode, setIsSelectionMode] = useState(true);
-  const [isLocked, setIsLocked] = useState(Authuser.LockedChats?.some(
-    (lock) => lock.userId === receiverId));
-    console.log(isLocked);
+  // const [isLocked, setIsLocked] = useState(Authuser.LockedChats?.some(
+  //   (lock) => lock.userId === receiverId));
+  const [isLocked, setIsLocked] = useState(false);
   const [pin, setPin] = useState('');
+  // const {selectedHashtag, setSelectedHashtag} = useAuthContext();
+  // const {lastMessages, setLastMessages} = useStatusContext()
   const [inputPin, setInputPin] = useState('');
   const [error, setError] = useState(null);
-  // const { sendMessage, loading } = useSendMessage();
   const [newMessage, setNewMessage] = useState('');
   const [searchBar, setSearchBar] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showStarredMessages, setShowStarredMessages] = useState(false);
   const [userId, setUserId] = useState('');
+
   const [isTyping, setIsTyping] = useState(false);
-  const { userInfo, setUserInfo, onlineStatus, setOnlineStatus, updatedStatus } = useStatusContext();
-  // const {setauthuserinfo}=useStatusContext()
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const { userInfo, setUserInfo } = useStatusContext();
   const typingTimeout = useRef(null);
   const { userMap } = useAuthContext();
-  const messageRefs = useRef([]); // References to message elements
+  const messageRefs = useRef([]); 
   const [searchResults, setSearchResults] = useState([]);
   const { messages2, setMessages2 } = useStatusContext();
-  // console.log(Authuser);
+  const {unreadCount, setUnreadCount} = useStatusContext()
   useEffect(() => {
-    const isChatLocked = Authuser?.LockedChats?.some(
-      (lock) => lock.userId === receiverId
-    );
-    setIsLocked(isChatLocked);
-  }, [receiverId, Authuser]);
+    const count = messages2.filter((message) => message.status.state !== 'read' && message.sender!==Authuser._id).length;
+    setUnreadCount(count);
+  }, [messages2]);
+  useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+  
+      // If the user is not at the bottom, show the button
+      if (scrollHeight - scrollTop > clientHeight + 100) {
+        setIsScrolledUp(true);
+      } else {
+        setIsScrolledUp(false);
+      }
+    };
+  
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer){
+       chatContainer.addEventListener('scroll', handleScroll);
+    }  
+    // Cleanup the event listener on component unmount
+    return () => {
+      if (chatContainer) {
+        chatContainer.removeEventListener('scroll', handleScroll);
+    }
+        };
+  }, [clickedId]);
+  const scrollToBottom = () => {
+    chatContainerRef.current.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
+  // useEffect(() => {
+  //   const isChatLocked = Authuser?.LockedChats?.some(
+  //     (lock) => lock.userId === receiverId
+  //   );
+  //   setIsLocked(isChatLocked);
+  // }, [receiverId, Authuser]);
   const handleSelectMessage = (messageId) => {
     if (selectedMessages.includes(messageId)) {
       setSelectedMessages(selectedMessages.filter(id => id !== messageId));
@@ -91,7 +128,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     return () => {
       observer.disconnect(); // Disconnect the observer to avoid memory leaks
     };
-  }, [messages2]);
+  }, [messages2, socket, Authuser._id]);
   const scrollToMessage = (messageId) => {
     // Find the index of the message with the given messageId
     const index = messages2.findIndex((msg) => msg._id === messageId);
@@ -142,29 +179,30 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
   );
   useEffect(() => {
     if (clickedId) {
+      setMessages2([]);
       console.log('rendering ... ');
       fetch(`http://localhost:5000/message/get/${Authuser._id}/${clickedId}`)
         .then((res) => res.json())
         .then((data) => {
           setMessages2(data);
-          // console.log(data);
+          console.log(data);
         })
         .catch((error) => console.error("Error fetching messages:", error));
     }
   }, [clickedId]);
   useEffect(() => {
     if (clickedId) {
-      console.log('rendering /// ')
+      // console.log('rendering /// ')
       fetch(`http://localhost:5000/users/${clickedId}`)
         .then((res) => res.json()).then((data) => {
           setUserInfo(data);
         }).catch((error) => console.error("Error fetching userInfo:", error));
     }
-  }, [socket, clickedId]);
+  }, [clickedId]);
   useEffect(() => {
     setReceiverId(clickedId);
     setUserId(Authuser._id);
-    if (userId) {
+    if (clickedId) {
       registerUser(userId);
       console.log(clickedId, Authuser._id, " RIGHT MESSAGE 2 .JSX")
     }
@@ -236,10 +274,13 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
   useEffect(() => {
     socket.on('receiveMessage', (data) => {
       console.log('right message received componnt:', data);
+      if(data.sender===clickedId || data.sender===Authuser._id){
       setMessages2((prevMessages) => [...prevMessages, data]);
+    }
+    setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
+    // setNewMessage1(!newMessage1);  
     })
     socket.on('user_online', ({ userId, online, lastSeen }) => {
-      // Update the UI to show the user as online
       console.log(`User ${userId} is online , status is ${lastSeen} online is ${online}`);
       setUserInfo((prevUserInfo) =>
         prevUserInfo?._id === userId
@@ -255,8 +296,10 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
           : prevUserInfo
       );
     });
-    socket.on('typing', () => {
-      setIsTyping(true);
+    socket.on('typing', (userId) => {
+      if(userId===clickedId){
+        setIsTyping(true);
+      }
     });
     socket.on('stop-typing', () => {
       setIsTyping(false);
@@ -266,26 +309,22 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       setMessages2((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
     });
     socket.on('messageDeletedForEveryoneOnetoOne', (deletedMessage) => {
-      console.log(deletedMessage, 'message deleted for everyone onetoone');
+      // console.log(deletedMessage, 'message deleted for everyone onetoone');
       if (deletedMessage.deletedForEveryone) {
         setMessages2((prevMessages) => prevMessages.filter((msg, index) =>
           msg._id !== deletedMessage._id));
       }
       else {
-        setMessages2((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE' } : msg
-          )
-        );
+        // setMessages2((prevMessages) =>
+        //   prevMessages.map((msg) =>
+        //     msg._id === deletedMessage._id ? { ...msg, text: encryptMessage('DELETED FOR EVERYONE', secretKey) } : msg
+        //   )
+        // );
+        setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === deletedMessage._id ? deletedMessage : msg));
       }
     });
     socket.on('messageEditedOnetoOne', (data) => {
-      console.log(data, ' from server.js .... ')
-      setMessages2(prevMessages =>
-        prevMessages.map(msg =>
-          msg._id === data._id ? data : msg
-        )
-      );
+      setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
     });
     socket.on('messagePinnedOnetoOne', (pinnedMessage) => {
       setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === pinnedMessage._id ? pinnedMessage : msg));
@@ -295,7 +334,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
     });
     return () => {
-      socket.off('receive_message');
+      socket.off('receiveMessage');
       socket.off('typing');
       socket.off('stop-typing');
       socket.off('messagePinnedOnetoOne')
@@ -306,7 +345,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       socket.off('messageReactedOneToOne');
       socket.off('messageDeletedForEveryoneOnetoOne');
     };
-  }, [socket, Authuser._id]);
+  }, [socket,Authuser._id]);
   const handleSendMessage = () => {
     if (newMessage.trim() === '') return;
     const encyptmsg = encryptMessage(newMessage, secretKey);
@@ -360,11 +399,12 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
             <div className='border border-gray-300 p-2 w-[100%] h-[80px] rounded-2xl bg-orange-400 flex gap-5 justify-between'>
               <div className='flex flex-col gap-1'>
                 <p className='font-bold text-3xl'>{userInfo.username.toUpperCase()}  {isTyping && <div>is typing...</div>}</p>
-                <p>
+                <p className='flex gap-3'>
                   {userInfo.online ? `Online` : userInfo.ShowLastSeen ? `Last seen ${userInfo.lastSeen}` : ``}
+                  {/* {unreadCount} */}
                 </p>
-                {isSelectionMode && <button onClick={()=>{toggleSelectionMode(); console.log(selectedMessages)}}>Cancel</button>}
-                {!isSelectionMode && <button onClick={toggleSelectionMode}>Select</button>}
+                {/* {isSelectionMode && <button onClick={()=>{toggleSelectionMode(); console.log(selectedMessages)}}>Cancel</button>}
+                {!isSelectionMode && <button onClick={toggleSelectionMode}>Select</button>} */}
               </div>
               {searchBar &&
                 <div className="search-bar flex flex-col">
@@ -387,14 +427,14 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
           ) : (
             <p className='font-bold '>WELCOME TO CHAT APP, CLICK HERE ON ANY USER TO BEGIN CHATTING</p>
           )}
-          <div className="p-4 flex-1 overflow-y-auto bg-white h-fit min-w-[740px]" style={{ maxHeight: '400px', backgroundImage: `url(${wallpaper})` }}>
+          <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto bg-white h-fit min-w-[740px]" style={{ maxHeight: '400px', backgroundImage: `url(${wallpaper})` }}>
             {messages2?.length === 0 ? (
               <div>No messages found in this conversation.
 
               </div>
             ) :
               messages2.map((message2, index) => (
-                <Message ref={(el) => (messageRefs.current[index] = el)}
+                <Message ref={(el) => (messageRefs.current[index] = el)} 
                   dataMessageId={message2._id}
                   isSelected={selectedMessages.includes(message2._id)}
           onSelect={() => handleSelectMessage(message2._id)}
@@ -414,6 +454,18 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
                 <button className='hover:cursor-pointer' onClick={cancelReply}>Cancel</button>
               </div>
             )}
+            {isScrolledUp && (
+             <>
+            <span className='scroll-to-bottom-button1'>{unreadCount}</span> 
+        <button
+        className="scroll-to-bottom-button"
+        onClick={scrollToBottom}
+        >
+        <img src={scrolldown} height={20} width={20} alt="" />
+      </button>
+        </> 
+    )}
+        {clickedId && <>
             <TextField
               label="Enter your message..."
               fullWidth
@@ -424,10 +476,14 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
                   handleSendMessage();
                 }
               }}
-            />
+              />
             <Button variant="contained" color="primary" onClick={handleSendMessage}>
               Send
             </Button>
+            
+              </>
+              
+            }
           </div>
         </div>
         ) :
@@ -445,6 +501,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
           searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages2}
         />
       }
+        
     </div>
 
   )

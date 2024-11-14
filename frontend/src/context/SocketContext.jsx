@@ -13,7 +13,6 @@ export const SocketProvider = ({ children }) => {
  
   });
   const [socketId, setSocketId] = useState(null);
-
   useEffect(() => {
     socket.on('connect', () => {
       setSocketId(socket.id);
@@ -29,23 +28,10 @@ export const SocketProvider = ({ children }) => {
       console.log('Received message:', data);
       // Handle the received message, e.g., update state
     });
-  
-    socket.on('typing', (userId) => {
-      // console.log(`${userId} is typing...`);
-      // Update the UI to show the typing status
-    });
-  
-    socket.on('stop-typing', (userId) => {
-      // console.log(`${userId} stopped typing`);
-      // Update the UI to remove the typing status
-    });
-
     return () => {
       socket.off('connect');
       socket.off('disconnect');
       socket.off('receive_message');
-      socket.off('typing');
-      socket.off('stop-typing');
     };
   }, []);
 
@@ -63,7 +49,7 @@ export const SocketProvider = ({ children }) => {
     socket,
     socketId,
     registerUser,
-    sendMessageSocket
+    sendMessageSocket, 
   };
 
   return (

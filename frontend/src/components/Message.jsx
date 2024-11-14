@@ -10,6 +10,7 @@ import bluetick from '../assets/blue-double.png'
 import normaltick from '../assets/normal-double.png'
 import { Button, DialogActions, DialogContentText, FormControl, FormControlLabel, IconButton, Modal, Radio, RadioGroup, TextField } from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
+import ForwardMessageDialog from './ForwardMessageDialog';
 const Message = forwardRef((props,ref) => {
   const { setMessages2, messages2 ,userId,replyingTo, setReplyingTo, message2,
   messageRefs,setShowMessageInfo,showMessageInfo
@@ -18,15 +19,18 @@ const Message = forwardRef((props,ref) => {
   const [showEditModal, setShowEditModal] = useState(false); 
   const [editText, setEditText] = useState(''); // State for edited message text
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
+  const [showForwardModal, setShowForwardModal] = useState(false);
   const { socket } = useContext(SocketContext);
   const [pinDuration, setPinDuration] = useState(''); // e.g., "24 hours", "7 days"
-  const {userMap}=useAuthContext()
-  const {Authuser, setAuthuser}=useAuthContext();
+  const {userMap,users}=useAuthContext()
+  const {Authuser, setAuthuser,clickedId}=useAuthContext();
   const [currentMessage, setCurrentMessage] = useState(message2);
   const [deleteOption, setDeleteOption] = useState('forMe'); 
   const openDeleteModal = () => setShowModal(true);
+  const openForwardModal = () => setShowForwardModal(true);
   const [currentUser, setCurrentUser] = useState(null);
   const closeDeleteModal = () => setShowModal(false);
+  const closeForwardModal=() => setShowForwardModal(false);
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const handlePinClick = () =>setIsPinDialogOpen(true);
   const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
@@ -38,10 +42,6 @@ const Message = forwardRef((props,ref) => {
 
   const handleClose = () => {
     setOpenReaction(false);
-  };
-  const handleEmojiClick = (emoji) => {
-    console.log(`Selected emoji: ${emoji}`);
-    setOpenReaction(false); // Close the dialog after selecting an emoji
   };
   const handleCloseDialog = () => setIsPinDialogOpen(false);
   const handleDurationChange = (event) => setPinDuration(event.target.value);
@@ -77,10 +77,19 @@ const Message = forwardRef((props,ref) => {
      // Close the dialog after pinning
      setIsPinDialogOpen(false);
    };
+   const handleForwardMessage = (userId) => {
+    console.log("Message forwarded to:", userId);
+    // Add any further logic to forward the message here
+  };
   function decryptMessage(encryptedMessage, secretKey) {
-    
+    try{
     const bytes = CryptoJS.AES.decrypt(encryptedMessage, secretKey);
-    return bytes.toString(CryptoJS.enc.Utf8);} 
+    return bytes.toString(CryptoJS.enc.Utf8);
+  }
+  catch{
+    return encryptedMessage;
+  }
+} 
   const handleDelete = async () => {
     try {
       if (deleteOption === 'forMe') {
@@ -107,24 +116,25 @@ const Message = forwardRef((props,ref) => {
    })
    socket.on('MarkReadOneToOne', (data) => {
     console.log(data, 'from here confirmed');
-    if (data) {
-        setMessages2((prevMessages) => {
-            return prevMessages.map((msg) => {
-                // Check if the current message's ID matches the one from the socket event
-                if (msg._id === data._id) {
-                    return {
-                        ...msg,
-                        status: {
-                            ...msg.status,
-                            state: "read", // Update the state to "read"
-                            readTime: new Date().toISOString(), // Optionally update readTime to current time
-                        },
-                    };
-                }
-                return msg; // Return the original message if IDs don't match
-            });
-        });
-    }
+    // if (data) {
+    //     setMessages2((prevMessages) => {
+    //         return prevMessages.map((msg) => {
+    //             // Check if the current message's ID matches the one from the socket event
+    //             if (msg._id === data._id) {
+    //                 return {
+    //                     ...msg,
+    //                     status: {
+    //                         ...msg.status,
+    //                         state: "read", // Update the state to "read"
+    //                         readTime: new Date().toISOString(), // Optionally update readTime to current time
+    //                     },
+    //                 };
+    //             }
+    //             return msg; // Return the original message if IDs don't match
+    //         });
+    //     });
+    // }
+    setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
 });
 
  return ()=>{
@@ -185,6 +195,7 @@ const Message = forwardRef((props,ref) => {
     const fetchMessage = async (messageId) => {
       try {
         // console.log('rendering ...')
+           console.log('rendering ... ',messageId, ' from message.jsx api');
         const response = await axios.get(`http://localhost:5000/message/getMessageById/${messageId}`);
         setCurrentMessage(response.data);
       } catch (error) {
@@ -194,15 +205,17 @@ const Message = forwardRef((props,ref) => {
     if (message2) {
       fetchMessage(message2._id);
     }
-  }, [message2, socket]);
+  }, [message2.text,message2,socket]);
   return (
     <>
       {
-        !message2?.deletedFor?.includes(Authuser._id) &&
+        !message2?.deletedFor?.includes(Authuser._id) && (message2.sender === Authuser._id || message2.receiver === Authuser._id
+          || message2.sender===clickedId || message2.receiver===clickedId
+        ) &&
         <div ref={ref} data-message-id={dataMessageId} 
         data-message-sender={dataMessageSender} onClick={isSelectionMode ? onSelect : null} className={`${message2.sender === Authuser._id ? 'ml-[270px] bg-green-300' : 'mr-[200px] bg-cyan-200'}  message ${isSelected ? 'selected' : ''} mb-3 border border-gray
          rounded-lg shadow-2xl shadow-cyan-200  w-[60%]` } >
-              {isSelectionMode && <input type="checkbox" checked={isSelected} onChange={onSelect} />}
+              {/* {isSelectionMode && <input type="checkbox" checked={isSelected} onChange={onSelect} />} */}
 
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
               {/* {console.log(typeof(currentMessage.sender), " from message.jsx ")} */}
@@ -250,6 +263,9 @@ message2.status.state === 'read' ? (
            <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
                 ))
            }
+             <button className='mr-3' onClick={openForwardModal}>
+            FORWARD
+          </button>
            {
             message2.sender===Authuser._id && 
           <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message2._id);
@@ -259,6 +275,13 @@ message2.status.state === 'read' ? (
                         }  
           </div> 
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
+           <ForwardMessageDialog
+        open={showForwardModal}
+        handleClose={closeForwardModal}
+        allUsers={users}
+        onForward={handleForwardMessage}
+        message={message2}
+      />
            <Dialog open={openReaction} onClose={handleClose}>
       <DialogTitle>Select an Emoji Reaction</DialogTitle>
       <DialogContent>
@@ -288,7 +311,8 @@ message2.status.state === 'read' ? (
               <FormControl component="fieldset">
                 <RadioGroup value={deleteOption} onChange={(e) => setDeleteOption(e.target.value)}>
                   <FormControlLabel value="forMe" control={<Radio />} label="Delete for me" />
-                     { currentMessage.sender===userId && 
+                     {/* { currentMessage.sender===userId &&  */}
+                     { message2.sender===userId && 
                   <FormControlLabel value="forEveryone" control={<Radio />} label="Delete for everyone" />}
                 </RadioGroup>
               </FormControl>
@@ -302,6 +326,7 @@ message2.status.state === 'read' ? (
               </Button>
             </DialogActions>
           </Dialog>
+
           <Modal open={isPinDialogOpen} onClose={handleCloseDialog}>
         { !message2.pinned.isPinned ?
         <div style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
@@ -326,7 +351,7 @@ message2.status.state === 'read' ? (
             <DialogContent>
               <TextField
                 value={editText}
-                onChange={(e) => {setEditText(e.target.value);console.log(e.target.value)}}
+                onChange={(e) => {setEditText(e.target.value)}}
                 fullWidth
                 label="Edit Message"
               />
@@ -345,6 +370,4 @@ message2.status.state === 'read' ? (
     </>
   )
 })
-
-
 export default Message

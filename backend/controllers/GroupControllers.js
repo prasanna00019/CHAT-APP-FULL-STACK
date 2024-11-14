@@ -106,3 +106,54 @@ export const getLastMessageOfAllGroups = async (req, res) => {
     res.status(500).json({ message: 'Error getting last message of all groups' });
   }
 };
+// export const getUserGroupMessagesForTrending = async (req, res) => {
+//   try {
+//     const { authUserId } = req.params;
+    
+//     // 1. Find groups that the user is part of
+//     const userGroups = await Group.find({ participants: authUserId }).select('_id');
+
+//     // 2. For each group, fetch messages and structure the result
+//     const messagesByGroup = await Promise.all(
+//       userGroups.map(async (group) => {
+//         const messages = await GroupMessage.find({ group: group._id }).select('text createdAt');
+//         return { [group._id]: messages.map(msg => msg.text) };
+//       })
+//     );
+
+//     res.status(200).json(messagesByGroup);
+//   } catch (error) {
+//     console.error('Error fetching group messages:', error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// };
+export const getUserGroupMessagesForTrending = async (req, res) => {
+  try {
+    const { authUserId } = req.params;
+    
+    // 1. Find groups that the user is part of
+    const userGroups = await Group.find({ participants: authUserId }).select('_id');
+
+    // 2. For each group, fetch messages and structure the result
+    const messagesByGroup = await Promise.all(
+      userGroups.map(async (group) => {
+        const messages = await GroupMessage.find({ group: group._id }).select('text createdAt _id sender reactions');  // Include message _id (messageId)
+        
+        // Map the messages to include messageId along with the text
+        return { 
+          [group._id]: messages.map(msg => ({
+            messageId: msg._id,  // Include messageId
+            message: msg.text  ,   // Include message text
+            sender: msg.sender,
+            reactions: msg.reactions
+          })) 
+        };
+      })
+    );
+
+    res.status(200).json(messagesByGroup);
+  } catch (error) {
+    console.error('Error fetching group messages:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};

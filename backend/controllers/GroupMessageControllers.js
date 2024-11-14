@@ -40,6 +40,7 @@ export const sendMessageGroup = async (req, res) => {
         text: messageData.text,
         reply: replyTo || null,
         status: onlineStatuses,
+        media: messageData.media
       });
   
       // Save the new message in the database

@@ -9,18 +9,15 @@ export const sendMessage = async (req, res) => {
     const { message,replyTo } = req.body; 
     const receiverId = req.params.toId;
     const senderId = req.params.fromId;
-    console.log(receiverId);
-    console.log(senderId);
-
     // Check if the receiver is online
     const receiver = await User.findById(receiverId);
     const isReceiverOnline = receiver?.online || false;
-
     // Check if a conversation already exists between the users
     let conversation = await Conversation.findOne({
-      participants: { $all: [senderId, receiverId] },
+      participants: { $all: [senderId, receiverId], $size: 2 }
     });
-
+    
+   console.log(conversation);
     // If no conversation exists, create a new one
     if (!conversation) {
       conversation = new Conversation({
@@ -29,8 +26,8 @@ export const sendMessage = async (req, res) => {
         updatedAt: new Date(),
       });
       await conversation.save();
+      console.log(conversation);
     }
-
     // Create a new message object with status based on receiver's online status
     const newMessage = new Message({
       sender: senderId,
@@ -51,15 +48,13 @@ export const sendMessage = async (req, res) => {
 
     // Save the new message in the database
     await newMessage.save();
-
     // Update the conversation with the new message
     conversation.messages.push(newMessage._id);
     conversation.updatedAt = new Date();
     await conversation.save();
-
+    console.log(conversation, 'updated conv');
     // Respond with the newly created message
     res.status(201).json({ id: newMessage._id, ...newMessage.toObject() });
-
   } catch (error) {
     console.error("Error in sending message controller:", error.message);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
@@ -97,9 +92,10 @@ export const getMessages = async (req, res) => {
 
     // Query for the conversation between the two users
     const conversation = await Conversation.findOne({
-      participants: { $all: [senderId, userToChatId] },
+      // participants: { $all: [senderId, userToChatId] }
+        participants: { $all: [senderId, userToChatId], $size: 2 }
+      
     });
-    // console.log(conversation._id);
     // If no conversation exists, return an empty array
     if (!conversation) {
       console.log("No conversation found between these users.");
@@ -345,37 +341,77 @@ export const ReactMessage = async (req, res) => {
   }
 };
 
+// export const getLastMessage = async (req, res) => {
+//   const { userId1, userId2 } = req.params; // Two user IDs between whom you want to find the conversation
+//   try {
+//     // Query the conversations collection for a conversation between userId1 and userId2
+//     const conversation = await Conversation.findOne({
+//       participants: { $all: [userId1, userId2] }
+//     });
+//     if (!conversation) {
+//       return res.status(200).json({ lastMessage: 'No messages till now' });
+//     }
+//     const messageIds = conversation.messages; // Assuming 'messages' is an array of message IDs
+//     if (!messageIds || messageIds.length === 0) {
+//       return res.status(200).json({});
+//     }
+//     const lastMessageId = messageIds[messageIds.length - 1]; // Get the last message ID
+//     const lastMessage = await Message.findById(lastMessageId);
+//     if (!lastMessage) {
+//       return res.status(200).json({});
+//     }
+//     return res.status(200).json( lastMessage );
+//   } catch (error) {
+//     console.error('Error fetching last message: ', error);
+//     return res.status(500).json({ error: 'Error fetching last message' });
+//   }
+// };
 export const getLastMessage = async (req, res) => {
-  const { userId1, userId2 } = req.params; // Two user IDs between whom you want to find the conversation
-
+  const { authUserId } = req.params; // The authenticated user's ID
   try {
-    // Query the conversations collection for a conversation between userId1 and userId2
-    const conversation = await Conversation.findOne({
-      participants: { $all: [userId1, userId2] }
+    // Find all conversations where authUserId is a participant
+    const conversations = await Conversation.find({
+      participants: authUserId,
+      $expr: { $eq: [{ $size: "$participants" }, 2] }
     });
 
-    if (!conversation) {
-      return res.status(200).json({ lastMessage: 'No messages till now' });
-    }
-
-    const messageIds = conversation.messages; // Assuming 'messages' is an array of message IDs
-
-    if (!messageIds || messageIds.length === 0) {
-      return res.status(200).json({ lastMessage: 'No messages till now' });
-    }
-
-    // Fetch the last message from the messages collection
-    const lastMessageId = messageIds[messageIds.length - 1]; // Get the last message ID
-    const lastMessage = await Message.findById(lastMessageId);
-
-    if (!lastMessage) {
-      return res.status(200).json({ lastMessage: 'No last message found' });
-    }
-
-    return res.status(200).json({ lastMessage });
+    const conversationsWithLastMessage = await Promise.all(conversations.map(async (conversation) => {
+      // Fetch the last message in this conversation based on messages array
+      if (conversation.messages && conversation.messages.length > 0) {
+        // Sort messages by createdAt descending to get the latest message
+        const lastMessage = await Message.findOne({ _id: { $in: conversation.messages } })
+          .sort({ sentAt: -1 }); // Get the most recent message
+          console.log(lastMessage)
+        // Get the other participant's ID
+        const otherParticipant = conversation.participants.find(userId => userId.toString() !== authUserId);
+        const unreadCount = await Message.countDocuments({
+          _id: { $in: conversation.messages },
+          "status.state": { $ne: "read" }, // Use dot notation for nested fields
+          sender: otherParticipant,
+        });
+  
+        return {
+          conversationId: conversation._id,
+          otherParticipant,
+          lastMessage: lastMessage ? lastMessage.text : 'No messages till now',
+          lastMessageTime: lastMessage ? lastMessage.createdAt : null,
+          unreadCount: unreadCount
+        };
+      } else {
+        // Handle case if there are no messages in the conversation
+        const otherParticipant = conversation.participants.find(userId => userId.toString() !== authUserId);
+        return {
+          conversationId: conversation._id,
+          otherParticipant,
+          lastMessage: 'No messages till now',
+          lastMessageTime: null
+        };
+      }
+    }));
+    res.json(conversationsWithLastMessage);
   } catch (error) {
-    console.error('Error fetching last message: ', error);
-    return res.status(500).json({ error: 'Error fetching last message' });
+    console.error('Error getting last messages of all conversations:', error);
+    res.status(500).json({error: error.message});
   }
 };
 
