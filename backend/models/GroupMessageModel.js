@@ -10,6 +10,10 @@ const groupMessageSchema = new mongoose.Schema({
     ref: 'User', 
     required: true,
   }],
+  flaggedForDeletion: {
+    type: Boolean,
+    default: false,
+  },
   group: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Group', 

@@ -49,6 +49,10 @@ const messageSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Message', 
   },
+  type:{
+   type:String,
+   default:"text" 
+  },
   status: {
     type: {
       state: {

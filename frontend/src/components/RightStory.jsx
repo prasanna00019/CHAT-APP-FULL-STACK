@@ -8,16 +8,23 @@ import GreenHeart from '../assets/heart-green.png';
 import emptyLike from '../assets/green-love.png'
 import toast, { Toaster } from 'react-hot-toast';
 import Viewers from './Viewers';
+import { Button, TextField } from '@mui/material';
+import { encryptMessage } from '../helper_functions';
+import useLogout from '../hooks/useLogout';
 const RightStory = () => {
   const { setClickedUserId, clickedUserId } = useStatusContext();
   const [stories, setStories] = useState([]);
+  const secretKey = '!@#$%^y7gH*3xs';
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+
   const [ClickLike, setClickLike] = useState(false);
   const [progress, setProgress] = useState(0);
   const { socket } = useContext(SocketContext);
   const { Authuser } = useAuthContext();
   const displayDuration = 3000; 
+  const {GROUP_CHAT_SECRET_KEY}=useLogout()
   const [viewers, setViewers] = useState([]); 
   const [NumLikes, setNumLikes] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
@@ -35,6 +42,30 @@ const RightStory = () => {
       console.error('Error fetching viewers:', error);
     }
   };
+  const handleSendMessage = () => {
+    if (newMessage.trim() === '') return;
+    const encyptmsg = encryptMessage(newMessage, secretKey);
+    const messageData = {
+      sender: Authuser._id,
+      receiver: clickedUserId,
+      message: encyptmsg,
+      reply: null,
+      type: "story",
+    }
+    console.log(clickedUserId)
+    console.log(messageData)
+    socket.emit('sendMessageOneToOne', messageData);
+    setNewMessage('');
+    setIsPaused(false);
+    toast.success('Message sent', {
+      duration: 3000,
+      position: 'top-center',
+      style: {
+        background: '#333',
+        color: '#fff',
+      },
+    })
+  }
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
       const currentStoryId = stories[currentStoryIndex]._id;
@@ -140,9 +171,9 @@ const RightStory = () => {
     if (clickedUserId && stories.length > 0) {
       updateViewCount(stories[currentStoryIndex]._id, Authuser._id);
     }
-    if (currentStoryIndex === stories.length - 1) {
-      setClickedUserId(null);
-    }
+    // if (currentStoryIndex === stories.length - 1) {
+      // setClickedUserId(null);
+    // }
   }, [clickedUserId, currentStoryIndex, setClickedUserId, stories]);
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
@@ -257,6 +288,23 @@ const RightStory = () => {
       <div className='p-4'>
         <h3 className='text-xl mb-2'>{currentStory.username}'s Story</h3>
         <p>{currentStory.content}</p>
+        <TextField
+          label="Type your message..."
+          fullWidth
+          value={newMessage}
+          onFocus={() => {setIsPaused(true);socket.emit('register', Authuser._id);}} 
+          onBlur={() => setIsPaused(false)} // Set paused to false on blur
+
+          onChange={(e) => { setNewMessage(e.target.value); }}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSendMessage();
+            }
+          }}
+          />
+             <Button onClick={handleSendMessage} variant="contained" color="primary">
+          Send
+        </Button> 
         <div>{
   currentStory.media && <img src={currentStory.media} width={300} height={300} alt="" />}</div>
         <div className="flex items-center gap-4">

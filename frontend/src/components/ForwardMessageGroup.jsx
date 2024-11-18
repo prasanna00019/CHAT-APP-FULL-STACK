@@ -13,7 +13,6 @@ const ForwardMessageGroup = ({ open, handleClose, groups, message }) => {
   const { Authuser } = useAuthContext();
 
   const handleForwardToMultipleGroups = (selectedGroups) => {
-    // console.log(selectedGroups)
     selectedGroups.forEach((group) => {
       const receivers = group.participants.filter((id) => id !== Authuser._id);
       const messageData = {
@@ -25,7 +24,6 @@ const ForwardMessageGroup = ({ open, handleClose, groups, message }) => {
         sender: Authuser._id,
         media: "",
       };
-    //   console.log(messageData);
       socket.emit('sendMessageGroup', messageData);
     });
     

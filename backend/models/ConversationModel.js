@@ -12,6 +12,10 @@ const conversationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isGroup: {
+    type: Boolean,
+    default: false
+  },
   messages: [
     {
       type: mongoose.Schema.Types.ObjectId,

@@ -3,10 +3,11 @@ import Conversation from "../models/ConversationModel.js";
 import User from "../models/UserModel.js";
 import CryptoJS from 'crypto-js';
 import mongoose from "mongoose";
+import { io } from "../server.js";
 // Function to send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { message,replyTo } = req.body; 
+    const { message,replyTo,type } = req.body; 
     const receiverId = req.params.toId;
     const senderId = req.params.fromId;
     // Check if the receiver is online
@@ -14,7 +15,8 @@ export const sendMessage = async (req, res) => {
     const isReceiverOnline = receiver?.online || false;
     // Check if a conversation already exists between the users
     let conversation = await Conversation.findOne({
-      participants: { $all: [senderId, receiverId], $size: 2 }
+      participants: { $all: [senderId, receiverId], $size: 2 },
+      isGroup: false
     });
     
    console.log(conversation);
@@ -36,6 +38,7 @@ export const sendMessage = async (req, res) => {
       sentAt: Date.now(),
       editedAt: null,
       reply:replyTo ,
+      type: type,
       deletedForEveryone: false,
       deletedFor: [],
       reactions: [],
@@ -93,8 +96,8 @@ export const getMessages = async (req, res) => {
     // Query for the conversation between the two users
     const conversation = await Conversation.findOne({
       // participants: { $all: [senderId, userToChatId] }
-        participants: { $all: [senderId, userToChatId], $size: 2 }
-      
+        participants: { $all: [senderId, userToChatId], $size: 2 },
+        isGroup: false      
     });
     // If no conversation exists, return an empty array
     if (!conversation) {
@@ -372,6 +375,7 @@ export const getLastMessage = async (req, res) => {
     // Find all conversations where authUserId is a participant
     const conversations = await Conversation.find({
       participants: authUserId,
+      isGroup: false,
       $expr: { $eq: [{ $size: "$participants" }, 2] }
     });
 
@@ -394,7 +398,8 @@ export const getLastMessage = async (req, res) => {
           conversationId: conversation._id,
           otherParticipant,
           lastMessage: lastMessage ? lastMessage.text : 'No messages till now',
-          lastMessageTime: lastMessage ? lastMessage.createdAt : null,
+          lastMessageTime: lastMessage ? lastMessage.sentAt : null,
+          lastMessageStatus: lastMessage ? lastMessage.status.state : null,
           unreadCount: unreadCount
         };
       } else {
@@ -444,10 +449,13 @@ export const getLastMessage = async (req, res) => {
 
     // Update all matching messages in a single operation
     const result = await Message.updateMany(filter, { $set: update });
-
-    console.log(`Updated ${result.modifiedCount} messages to delivered for user ${userId}`);
-    res.status(200).json({ message: `Updated ${result.modifiedCount} messages to delivered.` });
-
+    // console.log(`Updated ${result.modifiedCount} messages to delivered for user ${userId}`);
+    const updatedMessages = await Message.find({
+      receiver: userId,
+      'status.state': 'delivered',
+    });
+    res.status(200).json({ message: result.modifiedCount });
+     io.emit('updateMessagesZEN', updatedMessages);
   } catch (error) {
     console.error("Error in updating message status when user comes online:", error.message);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { TextField, Button, Dialog, DialogTitle, DialogContent, DialogContentText, FormControl, RadioGroup, FormControlLabel, DialogActions, Radio } from '@mui/material';
+import { TextField, Button, Dialog, DialogTitle, DialogContent, DialogContentText, FormControl, RadioGroup, FormControlLabel, DialogActions, Radio, ListItem, ListItemIcon, Checkbox, ListItemText } from '@mui/material';
 import { SocketContext } from '../context/SocketContext';
 import GroupMessage from './GroupMessage';
 import info from '../assets/information.png';
@@ -13,13 +13,14 @@ import useLogout from '../hooks/useLogout';
 import scrolldown from '../assets/Scroll-down.png'
 import { decryptMessage, encryptMessage } from '../helper_functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import TrendingMessages from './TrendingMessages';
 import ScheduleSend from './ScheduleSend';
+import toast from 'react-hot-toast';
+// import AutocompleteInput from './AutocompleteInput';
 const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   const { socket } = useContext(SocketContext) // Replace with your backend URL
   const storage = getStorage();
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-
+const [open, setopen] = useState(false);
   const [currentGroupInfo, setCurrentGroupInfo] = useState(null);
   const { messages, setMessages } = useStatusContext();
   const typingTimeout = useRef(null);
@@ -27,7 +28,8 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   const{GROUP_CHAT_SECRET_KEY}=useLogout();
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
   // const messageRefs = useRef([]); // References to message elements
-  const {messageRefs}=useAuthContext();
+  const {messageRefs,users}=useAuthContext();
+  const [selectedParticipants, setSelectedParticipants] = useState([]);
   const { userMap,Authuser } = useAuthContext();
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [searchBar,setSearchBar]=useState(false)
@@ -45,6 +47,13 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   const openInfoModal = () => setShowModal(true);
   const [delay,setDelay]=useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  const handleClickOpen = () => {
+    setopen(true);
+  }
+  const handleClose = () => {
+    setopen(false)
+  };
   useEffect(() => {
     const count = messages.filter((message) => {
       const userStatus = message.status.find(
@@ -54,7 +63,14 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
     }).length;
     setUnreadCount(count);
   }, [messages, Authuser._id]);
-  
+  const handleToggleParticipant = (userId) => {
+    if (selectedParticipants.includes(userId)) {
+      setSelectedParticipants(selectedParticipants.filter(id => id !== userId));
+    } else {
+      setSelectedParticipants([...selectedParticipants, userId]);
+    }
+    console.log(selectedParticipants);
+  };
   useEffect(() => {
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
@@ -91,7 +107,7 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
 
   }, [])
   const pinnedResultsDiv=(
-    <div className="pinned-results border border-gray-900 p-2">
+    <div className="pinned-results border border-gray-800 p-2">
               <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
 
     {
@@ -141,12 +157,6 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
     renderSearchResults()}
   </div>
   );
-  // Count and sort hashtags
-
-// console.log(getTrendingHashtags(messages_temp));
-// Example render function
-
-  // Establish socket connection and join the group when clickedGroupId changes
   useEffect(() => {
     if (clickedGroupId) {
       // console.log(clickedGroupId, "clocledGroupID")
@@ -182,6 +192,7 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
       fetchMessages();
     }
   }, [clickedGroupId]);
+ 
   const handleImageChange = (event) => {
     setImage(event.target.files[0]);
   };
@@ -218,6 +229,13 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
       observer.disconnect(); // Disconnect the observer to avoid memory leaks
     };
   }, [messages]);
+  const handle1=async(data,index)=>{
+    // console.log(index);
+    socket.emit('deleteMessageForMeGroupUndo', data, userId,index);
+  }
+  const handle2=async(data,text)=>{
+    socket.emit('DMEgroupUndo', data, userId,text);
+  }
   // Listen for new messages from the server
   useEffect(() => {
     socket.on('receiveMessage', (messageData) => {
@@ -227,6 +245,10 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
      }
      setMessages((prevMessages) => prevMessages.map((msg) => msg._id === messageData._id ? messageData : msg));
     });
+    socket.on('groupUpdated', (updatedGroup) => {
+      console.log(updatedGroup);
+      setCurrentGroupInfo(updatedGroup);
+    })
     socket.on('typingGroup', (data) => {
       // console.log(data.sender,'from rightgroup.jsx typing .... ');
     // if(data.group===clickedGroupId){
@@ -241,12 +263,48 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
       setIsTyping(false);
     // }
     });
-    socket.on('messageDeletedForMe', (data) => {
-      console.log(data);
+    socket.on('DMEGroupUpdated',(updatedMessage)=>{
+      console.log(updatedMessage);
+      setMessages((prevMessages) => prevMessages.map((msg) => msg._id === updatedMessage._id ? updatedMessage : msg));
+    })
+    socket.on('messageUpdatedUndo', (updatedMessage,index) => {
+      // setMessages((prevMessages) => [...prevMessages, updatedMessage])
+      console.log(index);
+      setMessages((prevMessages) => {
+        const updated = [...prevMessages];
+        updated.splice(index, 0, updatedMessage); // Insert at the correct index
+        return updated;
+      });
+    });
+    socket.on('messageDeletedForMe', (data,index) => {
+      // console.log(data);
       setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
+      toast.success(
+        <div>
+          <p>DELETED FOR ME</p>
+          <button 
+            onClick={() => {     handle1(data,index);       }}  
+            style={{
+              marginTop: '10px',
+              padding: '5px 10px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            UNDO
+          </button>
+        </div>,
+        {
+          duration: 5000, // Optional: auto close after 5 seconds
+        }
+      );
+
     });
     // Handling here the 'messageDeletedForEveryone' event to update the UI for all users
-    socket.on('messageDeletedForEveryone', (deletedMessage) => {
+    socket.on('messageDeletedForEveryone', (deletedMessage,text) => {
       if (deletedMessage.deletedForEveryone) {
         setMessages((prevMessages) => prevMessages.filter((msg, index) =>
           msg._id !== deletedMessage._id));
@@ -254,8 +312,30 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
       else {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE' } : msg
+            msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE' ,flaggedForDeletion: true} : msg
           )
+        );
+        toast.success(
+          <div>
+            <p>DELETED FOR EVERYONE</p>
+            <button 
+              onClick={() => { handle2(deletedMessage,text) }}  
+              style={{
+                marginTop: '10px',
+                padding: '5px 10px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+            >
+              UNDO
+            </button>
+          </div>,
+          {
+            duration: 5000, // Optional: auto close after 5 seconds
+          }
         );
       }
     });
@@ -415,7 +495,6 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   />
   <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
 </div>}
-<button onClick={()=>socket.emit('cronTesting',1200)}>h</button>
       <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
             } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}
             IsGroupInfo={true} groupId= {currentGroupInfo._id} />
@@ -477,25 +556,39 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
       </button>
         </> 
     )}
-        {clickedGroupId ?  <>
-              <input type="file" onChange={handleImageChange} />
-              <TextField 
+       {clickedGroupId ? (
+  <>
+    {currentGroupInfo?.participants?.includes(userId) ? ( 
+      // Replace `authUserId` with the variable that holds the current authenticated user's ID
+      <>
+        <input type="file" onChange={handleImageChange} />
+        <TextField
           label="Type your message..."
           fullWidth
           value={newMessage}
-          onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            handleTyping();
+          }}
           onKeyPress={(e) => {
             if (e.key === 'Enter') {
               handleSendMessage();
             }
           }}
-          />
+        />
         <Button onClick={handleSendMessage} variant="contained" color="primary">
           Send
-        </Button> 
-       <ScheduleSend setDelay={setDelay}/>
-          </> : "CLICK ON ANY GROUP TO START CHATTING"
-}
+        </Button>
+        <ScheduleSend setDelay={setDelay} />
+      </>
+    ) : (
+      <p>You are not a participant of this group.You cant send messages any longer. </p>
+    )}
+  </>
+) : (
+  "CLICK ON ANY GROUP TO START CHATTING"
+)}
+
         <Dialog open={showModal} onClose={closeInfoModal}>
           <DialogTitle>GROUP INFO</DialogTitle>
           <DialogContent>
@@ -510,8 +603,8 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
             }
             {
               <div>
-                <button className='mr-2'>ADD MEMBERS</button>
-                {new Date(currentGroupInfo?.createdAt).toLocaleDateString()}
+{          <button className='mr-2' onClick={handleClickOpen}>ADD MEMBERS</button>
+}                {new Date(currentGroupInfo?.createdAt).toLocaleDateString()}
                 {/* {console.log(currentGroupInfo)} */}
               </div>
             }
@@ -522,6 +615,9 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
                 <p className='flex gap-2'>
                   {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
                   {currentGroupInfo.admins.includes(participant) ? <><span className='text-green-800'>Admin</span></> : <><span className='text-red-800'>Member</span></>}
+                    {participant!==userId && <button onClick={()=>{socket.emit('removeMembers',{groupId:currentGroupInfo._id,participants:participant,conversationId:currentGroupInfo.conversationId})}}>remove</button> }
+                  {!currentGroupInfo.admins.includes(participant) && <button onClick={()=>{socket.emit('makeAdmin',{groupId:currentGroupInfo._id,participants:[participant]})}}>make admin</button> }
+                 {participant!==userId &&  currentGroupInfo.admins.includes(participant) && <button onClick={()=>{socket.emit('removeAdmin',{groupId:currentGroupInfo._id,participants:participant});console.log(participant)}}>remove admin</button> }
                 </p>
               </li>
 
@@ -529,12 +625,39 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
             }
           </div>
           <DialogActions>
-            <Button className='hover:cursor-pointer bg-red-500' variant="contained">
+            <Button onClick={()=>{socket.emit('removeMembers',{groupId:currentGroupInfo._id,participants:userId,conversationId:currentGroupInfo.conversationId});closeInfoModal()}}  className='hover:cursor-pointer bg-red-500' variant="contained">
               LEAVE GROUP
             </Button>
             <Button onClick={closeInfoModal} color="default">
               Cancel
             </Button>
+            {currentGroupInfo?.admins?.includes(userId) && <Button disabled onClick={()=>{socket.emit('deleteGroup',currentGroupInfo._id);closeInfoModal()}}>
+             DELETE GROUP
+            </Button>}
+          </DialogActions>
+        </Dialog> 
+
+        <Dialog open={open} onClose={handleClose}>
+          
+            <h4>Select Participants:</h4>
+            {
+            //  console.log(allUsers.filter((user) => user._id !== userId))
+            users.filter((user) => user._id !== userId && !currentGroupInfo?.participants?.includes(user._id)).map(user => (
+              <ListItem key={user._id} button onClick={() => handleToggleParticipant(user._id)}>
+                <ListItemIcon>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedParticipants.includes(user.id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                </ListItemIcon>
+                <ListItemText primary={user.username || user.email} />
+              </ListItem>
+            ))}
+          <DialogActions>
+            <Button onClick={()=>{socket.emit('addMembers', { groupId: clickedGroupId, participants: selectedParticipants,conversationId:currentGroupInfo.conversationId });handleClose()}} color="secondary">ADD MEMBER(S)</Button>
+            {/* <Button onClick={handleCreateGroup} color="primary">Create Group</Button> */}
           </DialogActions>
         </Dialog>
       </div>

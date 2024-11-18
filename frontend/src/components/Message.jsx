@@ -35,7 +35,9 @@ const Message = forwardRef((props,ref) => {
   const handlePinClick = () =>setIsPinDialogOpen(true);
   const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
   const [openReaction, setOpenReaction] = useState(false);
-
+  const ReadReceipts=users.find(user=>user._id===message2.receiver)?.ReadReceipts;   
+  const ReadReciepts2=users.find(user=>user._id===message2.sender)?.ReadReceipts;
+  // console.log(ReadReceipts)
   const handleClickOpen = () => {
     setOpenReaction(true);
   };
@@ -116,24 +118,6 @@ const Message = forwardRef((props,ref) => {
    })
    socket.on('MarkReadOneToOne', (data) => {
     console.log(data, 'from here confirmed');
-    // if (data) {
-    //     setMessages2((prevMessages) => {
-    //         return prevMessages.map((msg) => {
-    //             // Check if the current message's ID matches the one from the socket event
-    //             if (msg._id === data._id) {
-    //                 return {
-    //                     ...msg,
-    //                     status: {
-    //                         ...msg.status,
-    //                         state: "read", // Update the state to "read"
-    //                         readTime: new Date().toISOString(), // Optionally update readTime to current time
-    //                     },
-    //                 };
-    //             }
-    //             return msg; // Return the original message if IDs don't match
-    //         });
-    //     });
-    // }
     setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
 });
 
@@ -215,15 +199,15 @@ const Message = forwardRef((props,ref) => {
         <div ref={ref} data-message-id={dataMessageId} 
         data-message-sender={dataMessageSender} onClick={isSelectionMode ? onSelect : null} className={`${message2.sender === Authuser._id ? 'ml-[270px] bg-green-300' : 'mr-[200px] bg-cyan-200'}  message ${isSelected ? 'selected' : ''} mb-3 border border-gray
          rounded-lg shadow-2xl shadow-cyan-200  w-[60%]` } >
-              {/* {isSelectionMode && <input type="checkbox" checked={isSelected} onChange={onSelect} />} */}
-
-                                                     {currentMessage.reply && renderReply(currentMessage.reply)}
-              {/* {console.log(typeof(currentMessage.sender), " from message.jsx ")} */}
+               {message2.type==='story' && message2.receiver===Authuser._id && <span className='italic text-gray-500'>REPLIED TO YOUR STORY</span> }   
+               {message2.type==='automated'&& <span className='italic text-gray-500'>AUTOMATED MESSAGE</span>}       
+              {currentMessage.reply && renderReply(currentMessage.reply)}
               <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/>
               <p>{currentMessage.sender===Authuser._id?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,secretKey)}</p>
+             {/* {console.log(users.find(user => user._id === message2.receiver))} */}
               {message2.sender === Authuser._id ? (
-message2.status.state === 'read' ? (
-<span> <img src={bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
+  message2.status.state === 'read' ? (
+<span> <img src={(ReadReceipts && !ReadReciepts2) ||(ReadReciepts2 && !ReadReceipts) ||(!ReadReciepts2 && !ReadReceipts) ? normaltick:bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
 ) : message2.status.state === 'delivered' ? (
 <span> <img src={normaltick} width={30} height={10} alt="" /> </span> // Normal double tick
 ) : message2.status.state === 'sent' ? (

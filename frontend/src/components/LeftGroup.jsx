@@ -32,7 +32,7 @@ const LeftGroup = ({ userId }) => {
         return acc;
       }, {});
       setGroupMap(mappedGroups);
-      console.log(mappedGroups);
+      // console.log(mappedGroups);
     } catch (error) {
       console.error('Error fetching groups:', error);
     }
@@ -73,14 +73,14 @@ const LeftGroup = ({ userId }) => {
       try {
         const res = await axios.get('http://localhost:5000/group/getLastMessage')
         const lastMessageMap = res.data.reduce((acc, group) => {
-          console.log(group._id, group)
+          // console.log(group._id, group)
           acc[group._id] = group.lastMessage?.text;
           // acc[group.sender]=group?.lastMessage?.sender
           return acc;
         }, {});
         // console.log(lastMessage)
         setlastMessage(lastMessageMap);
-        console.log(lastMessage)
+        // console.log(lastMessage)
       }
       catch (error) {
         console.log(error)
@@ -100,7 +100,7 @@ const LeftGroup = ({ userId }) => {
     } else {
       setSelectedParticipants([...selectedParticipants, userId]);
     }
-    console.log(selectedParticipants);
+    // console.log(selectedParticipants);
   };
   const handleDeleteGroup = async (groupId) => {
     try {
@@ -141,7 +141,7 @@ const LeftGroup = ({ userId }) => {
        <p> {  decryptMessage(lastMessage?.[group._id], GROUP_CHAT_SECRET_KEY) || 
   decryptMessage(messages?.[messages.length - 1]?.text, GROUP_CHAT_SECRET_KEY) || 
   'No message yet...' }</p>
-  {console.log(lastMessage)}
+  {/* {console.log(lastMessage)} */}
             </li>
           ))}
         </ul>

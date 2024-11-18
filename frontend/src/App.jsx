@@ -11,6 +11,9 @@ import { Toaster } from 'react-hot-toast';
 import LoadingScreen from './components/LoadingScreen';
 import { decryptMessage, encryptMessage } from './helper_functions';
 import useLogout from './hooks/useLogout';
+import LeftGroup from './components/LeftGroup';
+import LeftStory from './components/LeftStory';
+import RightStory from './components/RightStory';
 function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFading, setIsFading] = useState(false);
@@ -43,6 +46,11 @@ function App() {
         <Route path='/login' element={Authuser ? <Navigate to='/' /> : <Login />} />
         <Route path='/signup' element={Authuser ? <Navigate to={'/login'} /> : <Signup />} />
         <Route path='/reset-password' element={<ResetPassword />} />
+        <Route path="/groups" element={  <LeftGroup userId={Authuser._id} />} />
+        <Route path="/stories" element={  <>
+          <LeftStory  userId={Authuser._id}/>
+          <RightStory />
+        </>} />
         <Route path='/user-profile' element={<UserProfile />} />
       </Routes>
       <Toaster /> </>}

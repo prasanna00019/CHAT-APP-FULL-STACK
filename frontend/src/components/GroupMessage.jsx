@@ -2,12 +2,14 @@ import React, { forwardRef, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { SocketContext } from '../context/SocketContext';
 import Button from '@mui/material/Button';
+import dustbin from '../assets/dustbin.png';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Radio from '@mui/material/Radio';
+import ban from '../assets/ban.png'
 import bluetick from '../assets/blue-double.png'
 import normaltick from '../assets/normal-double.png';
 import forward from '../assets/forward1.png'
@@ -25,6 +27,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import useLogout from '../hooks/useLogout';
 import Poll from './Poll';
 import ForwardMessageGroup from './ForwardMessageGroup';
+import { toast } from 'react-toastify';
 const GroupMessage =forwardRef((props,ref) => {
 const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs,
   setShowMessageInfo,showMessageInfo, dataMessageId,
@@ -138,10 +141,6 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const handleClose = () => {
     setOpenReaction(false);
   };
-  const handleEmojiClick = (emoji) => {
-    console.log(`Selected emoji: ${emoji}`);
-    setOpenReaction(false); // Close the dialog after selecting an emoji
-  };
   // Handle the edit action
   const handleEdit = () => {
     socket.emit('editMessageGroup', { messageId: message._id, groupId: message.group, newText: editText });
@@ -149,13 +148,42 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   };
 
   // Handle the delete action
+  const showDeleteToast = (message, onUndo) => {
+    toast.success(
+      ({ closeToast }) => (
+        <div>
+          <p>{message}</p>
+          <button onClick={() => { onUndo(); closeToast(); }} style={buttonStyle}>
+            UNDO
+          </button>
+        </div>
+      ),
+      { autoClose: 10000, progress: undefined } // 10 seconds with progress bar
+    );
+  };
+  const buttonStyle = {
+    marginTop: '5px',
+    padding: '5px 10px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+  };
+
   const handleDelete = async () => {
     try {
       if (deleteOption === 'forMe') {
-        socket.emit('deleteForMe', message._id, message.group);
-        setMessages(prevMessages => prevMessages.filter(msg => msg._id !== message._id));
+        showDeleteToast('MESSAGE DELETED FOR ME', () => {
+          // Undo delete logic here
+          console.log('Undo delete!');
+        });
+        const index = messages.findIndex((msg) => msg._id === message._id);
+        console.log(index)
+        socket.emit('deleteForMe', message._id, message.group,index);
+        // setMessages(prevMessages => prevMessages.filter(msg => msg._id !== message._id));
       } else if (deleteOption === 'forEveryone') {
-        socket.emit('deleteForEveryone', message._id, message.group);
+        socket.emit('deleteForEveryone', message._id, message.group,message.text);
       }
       setShowModal(false); // Close the modal after deletion
     } catch (error) {
@@ -177,7 +205,7 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     if (message) {
       fetchMessage(message._id);
     }
-  }, [message.text]);
+  }, [message.text,socket,message.flaggedForDeletion]);
   useEffect(()=>{
    socket.on('MarkReadGroup',(data)=>{
     console.log(data,' from group UI read');
@@ -204,13 +232,27 @@ return ()=>{
   return (
     <>
               <img src={forward} height={20} width={20} alt="" onClick={openForwardModal}/>
-
+              { message.deletedFor.includes(userId) && (
+  <button onClick={() => {
+      socket.emit('deleteMessageForMeGroupUndo', message, userId,index);
+      setMessages((prevMessages) => 
+        prevMessages.map((msg) => 
+          msg._id === message._id 
+            ? { ...msg, deletedFor: msg.deletedFor.filter(id => id !== userId) }
+            : msg
+        )
+      );
+  }}>
+    Revert
+  </button>
+)}
       {
         !message.deletedFor.includes(userId) &&
         <div ref={ref}
         data-message-id={dataMessageId}
         data-message-sender={dataMessageSender} 
-        className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }>
+        className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }
+        >
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
           {currentMessage.media && <img src={currentMessage.media} width={200} height={50} onClick={handleClickOpenImage}/>} 
           {/* <Poll/> */}
@@ -221,6 +263,7 @@ return ()=>{
           </IconButton>
         </DialogActions>
         <DialogContent>
+
           <img
             src={currentMessage.media}
             alt="Large View"
@@ -228,11 +271,13 @@ return ()=>{
           />
         </DialogContent>
       </Dialog>
-          <p>{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
+          <p className={`${message.flaggedForDeletion?'italic':''} ${message.flaggedForDeletion && 'text-gray-600 text-2xl'}` }
+          >{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
        {/* {console.log(message.status)} */}
-          <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
-          {/* <span>{tickIcon}</span> */}
-          {message.sender === userId ? (
+{     !message.flaggedForDeletion &&   
+   <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
+}          {/* <span>{tickIcon}</span> */}
+          {!message.flaggedForDeletion &&  message.sender === userId ? (
   (() => {
     // Check if all users have read the message
     const allRead = message.status.every(status => status.state === 'read');
@@ -252,36 +297,41 @@ return ()=>{
     }
   })()
 ) : null}
-
+<div className='flex gap-3 justify-between'>
+{message.flaggedForDeletion && <img src={ban} className='ml-2 ' width={30} height={20} alt="" /> }
+{message.flaggedForDeletion && <img className='hover:cursor-pointer'  onClick={() =>{socket.emit('deleteForEveryone', message._id, message.group,message.text);}} src={dustbin} width={30} height={5} alt="" />
+}
+</div>
           { (
             <>
-              <Button variant="contained" color="secondary" onClick={openDeleteModal}>
+             { !message.flaggedForDeletion && <Button variant="contained" color="secondary" onClick={openDeleteModal}>
                 DELETE
-              </Button>
+              </Button>}
              
-              { message.sender ===userId && <Button onClick={openEditModal} variant="contained" color="primary">
+              {!message.flaggedForDeletion &&  message.sender ===userId && <Button onClick={openEditModal} variant="contained" color="primary">
                 EDIT
               </Button>}
             </>
           )}
-          <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
-            COPY
-          </button>
-           <Button onClick={handlePinClick}>
-            {message.pinned.isPinned ? 'UNPIN' : 'PIN'}
-           </Button>
-          <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id,userId)}>
+      { !message.flaggedForDeletion && <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
+          COPY
+        </button>}
+         { !message.flaggedForDeletion && <Button onClick={handlePinClick}>
+            { message.pinned.isPinned ? 'UNPIN' : 'PIN'}
+           </Button>}
+        {!message.flaggedForDeletion &&  <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id,userId)}>
             {currentUser?.starredMessages?.includes(message._id) ? 'UNSTAR' : 'STAR'}
-          </button>
-          <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
-          {
+          </button>}
+{     !message.flaggedForDeletion &&
+     <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
+}          {
             message?.reactions?.map(reaction => (
            <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
                 ))
            }
           
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
-           {
+           {!message.flaggedForDeletion &&
             message.sender===userId && 
           <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
             scrollToMessage(message._id)

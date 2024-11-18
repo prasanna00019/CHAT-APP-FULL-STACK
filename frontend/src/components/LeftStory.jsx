@@ -5,7 +5,9 @@ import { SocketContext } from '../context/SocketContext';
 import toast, { Toaster } from 'react-hot-toast';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import axios from 'axios';
+import a1 from '../assets/a1.svg'
 import { Button, Checkbox, Dialog, DialogActions, ListItem, ListItemIcon, ListItemText } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 const LeftStory = ({userId}) => {
   const [storiesByUser, setStoriesByUser] = useState({});
   const [newStoryContent, setNewStoryContent] = useState('');
@@ -14,7 +16,7 @@ const LeftStory = ({userId}) => {
   const [loading, setLoading] = useState(false);
   const [s1, sets1] = useState(false)
   const [image, setImage] = useState(null);
-// const [imageURL, setImageURL] = useState('');
+  const navigate=useNavigate();
   const { Authuser } = useAuthContext();
   const [allUsers, setAllUsers] = useState([]);
   const [open,setOpen]= useState(false);
@@ -149,6 +151,7 @@ const handleToggleParticipant = (userId) => {
     handleClose();
     setSelectedParticipants([]);
  }
+ 
   return (
     <div className='p-3 border border-gray shadow-2xl mt-[-20px] font-bold shadow-blue-400 h-full w-[300px] bg-white rounded-lg'>
       <Toaster />

@@ -11,7 +11,6 @@ const ForwardMessageDialog = ({ open, handleClose, allUsers, onForward,message }
     const secretKey = '!@#$%^y7gH*3xs';
     const {Authuser}=useAuthContext();
     const handleForwardToMultipleUsers = (selectedUsers) => {
-        // console.log(message.text)
         selectedUsers.forEach((userId) => {
           const messageData = {
             sender: Authuser._id,
@@ -32,7 +31,6 @@ const ForwardMessageDialog = ({ open, handleClose, allUsers, onForward,message }
         })
       };
     const handleUserToggle = (userId) => {
-        // console.log(message)
       setSelectedUsers((prevSelected) =>
         prevSelected.includes(userId)
           ? prevSelected.filter((id) => id !== userId)

@@ -1,5 +1,7 @@
 import Story from "../models/StoryModel.js";
-import { io } from "../server.js";
+import { io } from "../socket/socket.js";
+// import { io } from "../server.js";
+
 export const createStory = async (req, res) => {
     try {
         const { userId, content, visibility, username } = req.body;

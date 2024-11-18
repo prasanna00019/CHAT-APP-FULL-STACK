@@ -17,6 +17,8 @@ import GroupMessage from "./models/GroupMessageModel.js";
 import User from "./models/UserModel.js";
 import Message from "./models/MessageModel.js";
 import CryptoJS from "crypto-js";
+import Group from "./models/GroupModel.js";
+import Conversation from "./models/ConversationModel.js";
 function encryptMessage(message, secretKey) {
   return CryptoJS.AES.encrypt(message, secretKey).toString();
 }
@@ -34,6 +36,7 @@ const io = new Server(server, {
 });
 const onlineUsers = {}; // Store online users
 export let userSocketMap = {}; // To map socket IDs to user IDs
+
 const updateMessageToDelivered = async (userId) => {
   try {
     const res = await fetch(`http://localhost:5000/message/Message-delivered/${userId}`, {
@@ -43,7 +46,10 @@ const updateMessageToDelivered = async (userId) => {
       }
     });
     const data = await res.json();
-    // console.log(data)
+    // console.log(data,'SOORYA')
+    if(data.message>0){
+      io.emit('messageDeliveredOne', data);
+    }
   }
   catch (error) {
     console.log(error)
@@ -89,35 +95,127 @@ const updateUserStatusInDatabase = async (userId, status) => {
   }
 };
 io.on('connection', async (socket) => {
+
   const userId = socket.handshake.query.userId;
   const Authuser = socket.handshake.query.Authuser;
-  console.log(userId,' ... userId');
-  console.log(Authuser,' ... AuthUserId');
   socket.on('joinGroup', (groupId) => {
     socket.join(groupId);
   });
+  socket.on('TEST',(userId,socketId)=>{
+    console.log(userId,socketId,'TEST');
+    userSocketMap[socketId]=userId
+  })
   socket.on('sendMessageOneToOne', async (messageData) => {
     try {
       const res = await fetch(`http://localhost:5000/message/send/${messageData.sender}/${messageData.receiver}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageData.message, replyTo: messageData.reply })
-      })
-      const data = await res.json();;   
-      // console.log(data, ' from server.js ')
+        body: JSON.stringify({ message: messageData.message, replyTo: messageData.reply,type:messageData.type })
+      });
+      const data = await res.json();   
       const receiverSocket = Object.keys(userSocketMap).find(
         (key) => userSocketMap[key] === messageData.receiver
       );
       console.log(userSocketMap, ' from send message');
       socket.emit('receiveMessage', data);
+      //  io.to(messageData.receiver).emit('receiveMessage', data);
+      socket.broadcast.to(messageData.receiver).emit('receiveMessage', data);
+      console.log(receiverSocket,'UIDAI');
       if (receiverSocket) {
         io.to(receiverSocket).emit('receiveMessage', data);
+      }
+      if(messageData.type==='story'){
+        const res1 = await fetch(`http://localhost:5000/message/send/${messageData.receiver}/${messageData.sender}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: encryptMessage("AUTOMATED MESSAGE TESTING",'!@#$%^y7gH*3xs'), replyTo: messageData.reply
+            ,type:"automated"
+           })
+        });
+        const data1 = await res1.json();
+        socket.emit('receiveMessage', data1);
+        if (receiverSocket) {
+          io.to(receiverSocket).emit('receiveMessage', data1);
+        } 
       }
     }
     catch (e) {
       console.log(e)
     }
   })
+  socket.on('addMembers', async ({ groupId, participants ,conversationId}) => {
+    try {
+      const group = await Group.findById(groupId);
+      const conv=await Conversation.findById(conversationId);
+    if (!group) {
+      throw new Error('Group not found');
+    }
+
+    // Add new participants, avoiding duplicates
+    const updatedParticipants = [...new Set([...group.participants, ...participants])];
+    console.log(updatedParticipants);
+    // Update the group in the database
+    group.participants = updatedParticipants;
+    conv.participants = updatedParticipants;
+    await conv.save();
+    const updatedGroup = await group.save();
+      io.to(groupId).emit('groupUpdated', updatedGroup);
+    } catch (error) {
+      console.error('Error adding members:', error);
+      socket.emit('error', { message: 'Failed to add members to group' });
+    }
+  });
+  socket.on('removeMembers', async ({ groupId, participants, conversationId }) => {
+    try {
+      const group = await Group.findById(groupId);
+      const conv = await Conversation.findById(conversationId);
+      // Remove participants, ensuring no duplicates and only removing those in the group
+      const updatedParticipants = group.participants.filter(
+        (participant) => !participants.includes(participant)
+      );
+      console.log(updatedParticipants);
+  
+      // Update the group and conversation models with the new participants list
+      group.participants = updatedParticipants;
+      conv.participants = updatedParticipants;
+  
+      // Save both the group and conversation
+      await group.save();
+      await conv.save();
+  
+      // Emit the updated group to all connected users
+      io.to(groupId).emit('groupUpdated', group);
+    } catch (error) {
+      console.error('Error removing members:', error);
+      socket.emit('error', { message: 'Failed to remove members from group' });
+    }
+  });
+  socket.on('makeAdmin',async({groupId,participants})=>{
+     try{
+      const group = await Group.findById(groupId);
+      const updatedAdmins = [...new Set([...group.admins, ...participants])];
+      group.admins = updatedAdmins;
+      await group.save();
+      io.to(groupId).emit('groupUpdated', group);
+     }
+     catch(err){
+      console.log(err)
+     }
+  })
+  socket.on('removeAdmin',async({groupId,participants})=>{
+    try{
+      const group = await Group.findById(groupId);
+      const updatedAdmins = group.admins.filter(
+        (participant) => !participants.includes(participant)
+      );
+      group.admins = updatedAdmins;
+      await group.save();
+      io.to(groupId).emit('groupUpdated', group);
+    }
+    catch(err){
+     console.log(err)
+    }
+  });
   socket.on('sendMessageGroup', async (messageData,delay) => {
     console.log('Message received:', messageData,delay);
     // Broadcast message to the group
@@ -129,7 +227,6 @@ io.on('connection', async (socket) => {
 
   // Schedule a cron job to execute at the target time
   const testCron = cron.schedule(`${targetSeconds} ${targetMinutes} * * * *`, async() => {
-    console.log('Cron job executed at:', new Date().toISOString());
     const response = await fetch(`http://localhost:5000/group/sendMessageGroup/${messageData.sender}/${messageData.group}`, {
       method: 'POST'
       , headers: { "Content-Type": "application/json" },
@@ -158,7 +255,35 @@ io.on('connection', async (socket) => {
       console.error('Error saving message:', error);
     }
   });
-  socket.on('deleteForMe', async (messageId, groupId) => {
+  socket.on('deleteMessageForMeGroupUndo', async (message, AuthuserId,index) => {
+    try {
+      // Remove the AuthuserId from the deletedFor array
+      await GroupMessage.findByIdAndUpdate(message._id, {
+        $pull: { deletedFor: AuthuserId }
+      });
+      
+      const updatedMessage = await GroupMessage.findById(message._id);
+      socket.emit('messageUpdatedUndo', updatedMessage,index); // Send back updated message
+    } catch (error) {
+      console.error("Error restoring message for user:", error);
+    }
+  });
+  socket.on('DMEgroupUndo', async (message, AuthuserId,text) => {
+    try{
+       await GroupMessage.findByIdAndUpdate(message._id, {
+         text: text,
+         flaggedForDeletion: false
+       })
+       const updatedMessage = await GroupMessage.findById(message._id);
+       io.to(message.group).emit('DMEGroupUpdated', updatedMessage);
+    }
+    catch(err){
+      console.log(err)
+    }
+  }  
+  )
+  //FOR GROUPS 
+  socket.on('deleteForMe', async (messageId, groupId,index) => {
     try {
       const response = await fetch(`http://localhost:5000/group/deleteMessageForMe/${messageId}/${Authuser}`, {
         method: 'PATCH',
@@ -166,7 +291,7 @@ io.on('connection', async (socket) => {
       });
       if (response.ok) {
         const savedMessage = await response.json();
-        socket.emit('messageDeletedForMe', savedMessage);
+        socket.emit('messageDeletedForMe', savedMessage,index);
         socket.emit('lastMessageGroup', savedMessage);
       }
     } catch (error) {
@@ -190,7 +315,7 @@ io.on('connection', async (socket) => {
     }
   })
   // Handle "Delete for Everyone" in groups !!! 
-  socket.on('deleteForEveryone', async (messageId, groupId) => {
+  socket.on('deleteForEveryone', async (messageId, groupId,text) => {
     try {
       // Delete the message from the database
       const response = await fetch(`http://localhost:5000/group/deleteMessageById/${messageId}`, {
@@ -198,7 +323,7 @@ io.on('connection', async (socket) => {
       });
       if (response.ok) {
         const savedMessage = await response.json();
-        io.to(groupId).emit('messageDeletedForEveryone', savedMessage);
+        io.to(groupId).emit('messageDeletedForEveryone', savedMessage,text);
         io.to(groupId).emit('lastMessageGroup', savedMessage);
       }
     } catch (error) {

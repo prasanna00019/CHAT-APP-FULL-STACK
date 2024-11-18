@@ -158,7 +158,8 @@ export const sendMessageGroup = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-    if (!message.deletedForEveryone && decryptMessage(message.text,process.env.GROUP_CHAT_SECRET_KEY)==='DELETED FOR EVERYONE') {
+    if (!message.deletedForEveryone && decryptMessage(message.text,process.env.GROUP_CHAT_SECRET_KEY)==='DELETED FOR EVERYONE'
+   && message.flaggedForDeletion) {
       // If the message is already marked as deleted for everyone, remove it from the database
       const m=await GroupMessage.findById(messageId);
       m.deletedForEveryone=true;
@@ -175,7 +176,8 @@ export const sendMessageGroup = async (req, res) => {
     else {
       // Update the message to reflect that it's been deleted for everyone
       message.text =encryptMessage ('DELETED FOR EVERYONE',process.env.GROUP_CHAT_SECRET_KEY);
-      message.deletedForEveryone = false;
+      // message.deletedForEveryone = false;
+      message.flaggedForDeletion=true;
       await message.save();
       res.status(200).json(message);
       return;

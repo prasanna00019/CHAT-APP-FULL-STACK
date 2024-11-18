@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { io } from 'socket.io-client';
+import React, { useState, useEffect, useContext } from 'react';
 import a1 from '../assets/chat-status-2.webp'
 import a2 from '../assets/status-update.webp'
 import a3 from '../assets/group.png'
 import LeftUserDisplay from '../components/LeftUserDisplay';
-import RightMessage from '../components/RightMessage';
 import LeftStory from '../components/LeftStory';
 import RightStory from '../components/RightStory';
 import { useAuthContext } from '../context/AuthContext';
 import LeftGroup from '../components/LeftGroup';
-import RightMessage2 from '../components/RightMessage2';
 import ChatLock from '../components/ChatLock';
+import { useNavigate } from 'react-router-dom';
+import { SocketContext } from '../context/SocketContext';
 const Home = () => {
   const { Authuser, setAuthuser } = useAuthContext();
-  const [chat, setChat] = useState(false);
-  const [group, setgroup] = useState(true);
+  const [chat, setChat] = useState(true);
+  const [group, setgroup] = useState(false);
   const [stories, setStories] = useState(false);
-  useEffect(() => {
-    setAuthuser(Authuser);
-  }, [Home, LeftUserDisplay, RightMessage])
+  const {  setclickedId ,clickedId} = useAuthContext();
+  const {socket}=useContext(SocketContext);
+  useEffect(()=>{
+    socket.emit('TEST',Authuser._id,socket.id);
+  },[socket]);
   const toggleLeftBar = (t) => {
     if (t == '1') {
       setChat(true);
@@ -28,11 +29,17 @@ const Home = () => {
       setChat(false);
       setStories(true);
       setgroup(false);
+      // console.log(clickedId)
+      setclickedId(null);
+      // socket.emit('register', Authuser._id);
     }
     else if (t == '3') {
       setChat(false);
       setgroup(true);
       setStories(false);
+      setclickedId(null)
+      // console.log(clickedId)
+      // socket.emit('register', Authuser._id);
     }
   }
   const authContext = useAuthContext();
@@ -48,8 +55,6 @@ const Home = () => {
       {chat && !stories && !group ? (
         <>
           <LeftUserDisplay userId={Authuser._id} />
-          {/* <RightMessage /> */}
-          {/* <RightMessage2/> */}
         </>
       ) : stories && !chat && !group ? (
         <>
@@ -58,7 +63,6 @@ const Home = () => {
         </>
       ) : group && !chat && !stories ? (
         <>
-          {/* {console.log(Authuser)} */}
           <LeftGroup userId={Authuser._id} />
         </>
       ) : <ChatLock/>}

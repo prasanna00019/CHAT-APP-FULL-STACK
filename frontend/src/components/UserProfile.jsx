@@ -27,7 +27,7 @@ const UserProfile = () => {
     boxShadow: '0px 0px 10px rgba(0,0,0,0.2)', // box shado
   }
   const customErrorTheme = {
-    fontSize: '18px', // font size
+    fontSize: '18px',
     fontWeight: 'bold', // font weight
     padding: '16px', // padding
     borderRadius: '10px', // border radius
@@ -37,12 +37,10 @@ const UserProfile = () => {
   }
   useEffect(()=>{
       socket.on('ChangedPhoto',({user,downloadURL})=>{
-        // console.log(user);
         setAuthuser(user);
       }
     )
     socket.on('UpdatedLastSeen',(data)=>{
-      // console.log(data);
       setAuthuser(data);
     })
     socket.on('UpdatedReadReceipts',(data)=>{
@@ -50,7 +48,6 @@ const UserProfile = () => {
       setAuthuser(data);
     })
     socket.on('UpdatedOnlineStatus',(data)=>{
-      // console.log(data);
       setAuthuser(data);
     })
     return ()=>{

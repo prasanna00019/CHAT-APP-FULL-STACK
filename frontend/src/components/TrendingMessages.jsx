@@ -39,7 +39,6 @@ const TrendingMessages = ({ messagesWithHashtag, onClose, clickedGroupId,setClic
           <ul>
             {messages.map((msg, index) => (
               <li key={index} className='bg-gray-900  p-1 mb-2'>
-                {console.log(`Group ID: ${groupId}, Message ID: ${msg.messageId}`)}  {/* Log groupId and messageId */}
                 <button onClick={() =>{handleMessageClick(groupId, msg)}}>
                  <div className='flex gap-1 flex-col'>
                  <span className='text-gray-500'>{GroupMap[groupId]} </span> 

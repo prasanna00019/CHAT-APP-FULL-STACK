@@ -10,11 +10,13 @@ import CryptoJS from 'crypto-js';
 import wallpaper from '../assets/wallpaper2.jpeg'
 import PinEntry from './PinEntry';
 import scrolldown from '../assets/Scroll-down.png'
+import starred from '../assets/starred.png'
 import MessageInfo from './MessageInfo';
-import TrendingMessages from './TrendingMessages';
+import pin12 from '../assets/pin.png'
+import a2 from '../assets/a2.svg'
 const RightMessage2 = ({newMessage1, setNewMessage1}) => {
   const { socket, registerUser } = useContext(SocketContext);
-  const { users, clickedId, setclickedId, Authuser, setAuthuser } = useAuthContext();
+  const { users, clickedId, setclickedId, Authuser, setAuthuser , } = useAuthContext();
   const [replyingTo, setReplyingTo] = useState(null);
   const chatContainerRef = useRef(null); // Reference for the chat container
   const [showMessageInfo, setShowMessageInfo] = useState(null);
@@ -26,8 +28,6 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
   //   (lock) => lock.userId === receiverId));
   const [isLocked, setIsLocked] = useState(false);
   const [pin, setPin] = useState('');
-  // const {selectedHashtag, setSelectedHashtag} = useAuthContext();
-  // const {lastMessages, setLastMessages} = useStatusContext()
   const [inputPin, setInputPin] = useState('');
   const [error, setError] = useState(null);
   const [newMessage, setNewMessage] = useState('');
@@ -105,12 +105,13 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
         entries.forEach(async (entry) => {
           if (entry.isIntersecting) {
             const messageId = entry.target.getAttribute('data-message-id');
-            console.log(messageId)
+            // console.log(messageId)
             try {
+              // const ReadReceipts=users.find(user=>user._id===Authuser._id).ReadReceipts;
               const senderId = entry.target.getAttribute('data-message-sender');
-              console.log(senderId)
+              // console.log(senderId)
               if (senderId !== Authuser._id) {
-                console.log('Reading message:', messageId);
+                // console.log('Reading message:', messageId);
                 socket.emit('ReadMessageOneToOne', { messageId, senderId });
               }
             } catch (err) {
@@ -149,13 +150,15 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       return <p>No results found</p>;
     }
     return searchResults?.map((result) => (
-      <div key={result._id} className="search-result hover:cursor-pointer bg-zinc-200" onClick={() => scrollToMessage(result._id)} >
+     <div className='bg-white p-1 '>
+  <div key={result._id} className="w-[240px]  search-result hover:cursor-pointer bg-zinc-200" onClick={() => scrollToMessage(result._id)} >
         <p>
-          <strong>Sender:</strong> {result.sender} <br />
+          <strong>Sender:</strong> {userMap[result.sender]} <br />
           <strong>Text:</strong> {highlightText(result.text, searchTerm)} <br />
-          <strong>Sent At:</strong> {new Date(result.sentAt).toLocaleString()} <br />
+          <strong></strong> {new Date(result.sentAt).toLocaleString()} <br />
         </p>
       </div>
+     </div> 
     ));
   };
   const highlightText = (text, term) => {
@@ -215,16 +218,18 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     return bytes.toString(CryptoJS.enc.Utf8);
   }
   const pinnedResultsDiv = (
-    <div className="pinned-results border border-gray-900 p-2">
+    <div className="pinned-results border border-gray-900 w-[240px] p-2 bg-white">
       <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
-
+      <div className='flex gap-2'>
+        <img src={pin12} width={30} height={60} className='mb-3' alt="" />
+      </div>
       {
         messages2?.filter((msg) => msg?.pinned?.isPinned).map((msg) => (
-          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="pinned-message bg-zinc-100 mb-2">
+          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="pinned-message bg-zinc-300 mb-4 p-2">
             <p>
-              <strong>Sender:</strong> {msg.sender} <br />
+              <strong>Sender:</strong> {userMap[msg.sender]} <br />
               <strong>Text:</strong> {decryptMessage(msg.text, secretKey)} <br />
-              <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+              {/* <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br /> */}
             </p>
           </div>
         ))
@@ -252,18 +257,24 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     }
   };
   const starredResultsDiv = (
-    <div className="starred-results border border-gray-800 p-2">
+    <div className="starred-results w-[240px] bg-white border border-gray-800 p-2 rounded-2xl">
       <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
+      <div className='flex gap-1 justify-between mb-4'>
+       <img src={starred} width={20} height={20} className='m-auto' alt="" />
+       <img src={starred} width={20} height={20} className='m-auto' alt="" />
+       <img src={starred} width={20} height={20} className='m-auto' alt="" />
+       <img src={starred} width={20} height={20} className='m-auto' alt="" />
+      </div>
       {messages2
         ?.filter(msg =>
           Authuser?.starredMessages?.includes(msg._id) // Check if the message is starred and exists in starredMessages
         )
         .map(msg => (
-          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="starred-message bg-zinc-100 p-2 mb-2 rounded">
+          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="starred-message  bg-zinc-200 p-2 mb-2 rounded">
             <p>
-              <strong>Sender:</strong> {msg.sender} <br />
+              <strong>Sender:</strong> {userMap[msg.sender]} <br />
               <strong>Text:</strong> {decryptMessage(msg.text, secretKey)} <br />
-              <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+              {/* <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br /> */}
             </p>
           </div>
         ))
@@ -296,6 +307,22 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
           : prevUserInfo
       );
     });
+    socket.on('updateMessagesZEN', (data) => {
+      // console.log(data);
+      setMessages2((prevMessages) => {
+        return prevMessages.map((message) => {
+          // Find the matching message by ID
+          const updatedMessage = data.find((newMessage) => newMessage._id === message._id);
+    
+          // If a match is found, return the updated message, else return the existing one
+          if (updatedMessage) {
+            return { ...message, ...updatedMessage }; // Merge old message with updated data
+          }
+          return message; // Return the original message if no match
+        });
+      });
+    });
+    
     socket.on('typing', (userId) => {
       if(userId===clickedId){
         setIsTyping(true);
@@ -344,6 +371,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       socket.off('messageDeletedForMeOnetoOne');
       socket.off('messageReactedOneToOne');
       socket.off('messageDeletedForEveryoneOnetoOne');
+
     };
   }, [socket,Authuser._id]);
   const handleSendMessage = () => {
@@ -354,6 +382,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       receiver: receiverId,
       message: encyptmsg,
       reply: replyingTo || null,
+      type:"text",
     }
     socket.emit('sendMessageOneToOne', messageData);
     // setMessages2((prevMessages) => [...prevMessages, messageData]);
@@ -391,12 +420,12 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     <div className='flex gap-4'>
       <div>
         <Toaster />
-        <h2>{isLocked ? 'Chat Locked' : <div>Chat Unlocked
+        {/* <h2>{isLocked ? 'Chat Locked' : <div>Chat Unlocked
           <button className='ml-3' onClick={() => { setIsLocked(true) }}>LOCK</button>
-        </div>}</h2>
+        </div>}</h2> */}
         {!isLocked ? (<div>
-          {userInfo ? (
-            <div className='border border-gray-300 p-2 w-[100%] h-[80px] rounded-2xl bg-orange-400 flex gap-5 justify-between'>
+          {userInfo && clickedId ? (
+            <div className='border border-gray-300 p-2 w-[100%] mt-[-20px]  h-[80px] rounded-2xl bg-orange-400 flex gap-5 justify-between'>
               <div className='flex flex-col gap-1'>
                 <p className='font-bold text-3xl'>{userInfo.username.toUpperCase()}  {isTyping && <div>is typing...</div>}</p>
                 <p className='flex gap-3'>
@@ -425,14 +454,17 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
 
             </div>
           ) : (
-            <p className='font-bold '>WELCOME TO CHAT APP, CLICK HERE ON ANY USER TO BEGIN CHATTING</p>
+            // <p className='font-bold '>WELCOME TO CHAT APP, CLICK HERE ON ANY USER TO BEGIN CHATTING</p>
+            ""
           )}
-          <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto bg-white h-fit min-w-[740px]" style={{ maxHeight: '400px', backgroundImage: `url(${wallpaper})` }}>
-            {messages2?.length === 0 ? (
+          <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto bg-white h-[480px] min-w-[740px] " style={{ backgroundImage: `url(${wallpaper})` }}>
+            {!clickedId && <img src={a2} className='m-auto mt-[50px]' alt="" />  }
+            {!clickedId && <div className='text-3xl text-gray-500'>CLICK TO BEGIN CHATTING</div> }
+            {messages2?.length === 0 && clickedId ? (
               <div>No messages found in this conversation.
-
               </div>
             ) :
+            clickedId &&
               messages2.map((message2, index) => (
                 <Message ref={(el) => (messageRefs.current[index] = el)} 
                   dataMessageId={message2._id}
