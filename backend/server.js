@@ -23,6 +23,9 @@ function encryptMessage(message, secretKey) {
   return CryptoJS.AES.encrypt(message, secretKey).toString();
 }
 dotenv.config();
+const __dirname_temp=path.resolve();
+const __dirname = path.join(__dirname_temp, '..');
+console.log(__dirname);
 const PORT = 5000;
 const app = express();
 // Create HTTP server for Express and Socket.IO
@@ -822,9 +825,16 @@ app.use('/message', messageRoutes);
 app.use('/story', StoryRoutes);
 app.use('/group', GroupRoutes);
 // Test route
-app.get('/', (req, res) => {
-  res.send("Hello, chat app CN project!");
+if(process.env.NODE_ENV==="production"){
+
+// Serve static files from the frontend
+app.use(express.static(path.join(__dirname, "frontend/dist")));
+
+// Handle client-side routing for SPA
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
 });
+}
 // Listen on the PORT using the HTTP server
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
