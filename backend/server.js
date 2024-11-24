@@ -24,7 +24,7 @@ function encryptMessage(message, secretKey) {
 }
 dotenv.config();
 const __dirname_temp=path.resolve();
-const __dirname = path.join(__dirname_temp, '..');
+const __dirname = path.join(__dirname_temp);
 console.log(__dirname);
 const PORT = 5000;
 const app = express();
