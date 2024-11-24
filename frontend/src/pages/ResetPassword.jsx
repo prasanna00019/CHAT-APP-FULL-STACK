@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import toast from 'react-hot-toast';
-import { auth } from '../../../backend/utils/FireBase';
+// import { auth } from '../../../backend/utils/FireBase';
+
 const ResetPassword = () => {
   const [email, setEmail] = useState('');
   const navigate = useNavigate(); 

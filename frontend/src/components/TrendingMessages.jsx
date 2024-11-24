@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { useStatusContext } from '../context/StatusContext';
+import CloseIcon from '@mui/icons-material/Close';
 
-const TrendingMessages = ({ messagesWithHashtag, onClose, clickedGroupId,setClickedGroupId}) => {
+const TrendingMessages = ({selectedHashtag, messagesWithHashtag, onClose, clickedGroupId,setClickedGroupId}) => {
     const {userMap}=useAuthContext();
     const {GroupMap, setGroupMap} = useAuthContext();  
     const { messages, setMessages } = useStatusContext();
@@ -31,8 +32,9 @@ const TrendingMessages = ({ messagesWithHashtag, onClose, clickedGroupId,setClic
       };
    return (
  
-  <div className='bg-black border border-black overflow-y-auto ml-[290px] w-full h-fit mt-[-540px] '>
+  <div className='bg-black border border-black overflow-y-auto ml-[270px] w-full h-fit mt-[-600px] '>
     <h3 className='text-white text-3xl'>Trending in your Groups</h3>
+    <p className='text-white' onClick={onClose}>&times;</p>
     <ul>
       {messagesWithHashtag.map(({ groupId, messages }) => (
         <li key={groupId}>
@@ -51,7 +53,7 @@ const TrendingMessages = ({ messagesWithHashtag, onClose, clickedGroupId,setClic
         </li>
       ))}
     </ul>
-    <button onClick={onClose}>Close</button>
+    <button className='text-white' onClick={onClose}>Close</button>
   </div>
 );
 }

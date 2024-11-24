@@ -110,7 +110,7 @@ io.on('connection', async (socket) => {
       const res = await fetch(`http://localhost:5000/message/send/${messageData.sender}/${messageData.receiver}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: messageData.message, replyTo: messageData.reply,type:messageData.type })
+        body: JSON.stringify({ message: messageData.message, replyTo: messageData.reply,media:messageData.media, type:messageData.type })
       });
       const data = await res.json();   
       const receiverSocket = Object.keys(userSocketMap).find(
@@ -255,6 +255,19 @@ io.on('connection', async (socket) => {
       console.error('Error saving message:', error);
     }
   });
+  socket.on('deleteMessageForMeOneToOneUndo',async(message,AuthuserId,index)=>{
+    try{
+      await Message.findByIdAndUpdate(message._id, {
+        $pull: { deletedFor: AuthuserId }
+      });
+      const updatedMessage = await Message.findById(message._id);
+      // console.log(updatedMessage,'from BITS');
+      socket.emit('messageUpdatedUndoOneToOne', updatedMessage,index); // Send back updated message
+    }
+    catch(err){
+      console.log(err)
+    }
+  });
   socket.on('deleteMessageForMeGroupUndo', async (message, AuthuserId,index) => {
     try {
       // Remove the AuthuserId from the deletedFor array
@@ -280,8 +293,26 @@ io.on('connection', async (socket) => {
     catch(err){
       console.log(err)
     }
-  }  
-  )
+  });
+  socket.on('DMEOneToOneUndo', async (message, reciever,text) => {
+    try{
+       await Message.findByIdAndUpdate(message._id, {
+         text: text,
+         flaggedForDeletion: false
+       })
+       const updatedMessage = await Message.findById(message._id);
+       const receiverSocketId = Object.keys(userSocketMap).find(
+        (key) => userSocketMap[key] ===  reciever
+        );
+        socket.emit('DMEOneToOneUpdated', updatedMessage);
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit('DMEOneToOneUpdated', updatedMessage);
+        }
+      }
+    catch(err){
+      console.log(err)
+    }
+  });
   //FOR GROUPS 
   socket.on('deleteForMe', async (messageId, groupId,index) => {
     try {
@@ -298,23 +329,22 @@ io.on('connection', async (socket) => {
       console.error('Error deleting message for the user:', error);
     }
   });
-  socket.on('deleteForMeOnetoOne', async (messageId, userId) => {
-    console.log(`User wants to delete message for themselves: ${messageId}`);
+  socket.on('deleteForMeOnetoOne', async (messageId, userId,index) => {
+    // console.log(index, 'from AITS')
     try {
-      const response = await fetch(`http://localhost:5000/message/deleteMessageForMe/${messageId}/${userId}`, {
+      const response = await fetch(`http://localhost:5000/message/deleteForMe/${messageId}/${userId}`, {
         method: 'PATCH',
         headers: { "Content-Type": "application/json" },
         // Assuming the user is connected via Socket.IO
       });
       if (response.ok) {
         const savedMessage = await response.json();
-        socket.emit('messageDeletedForMeOnetoOne', savedMessage);
+        socket.emit('messageDeletedForMeOnetoOne', savedMessage,index);
       }
     } catch (error) {
       console.error('Error deleting message for the user:', error);
     }
   })
-  // Handle "Delete for Everyone" in groups !!! 
   socket.on('deleteForEveryone', async (messageId, groupId,text) => {
     try {
       // Delete the message from the database
@@ -346,7 +376,7 @@ io.on('connection', async (socket) => {
   
     console.log('Scheduled cron to execute at:', targetTime.toLocaleTimeString());
   });
-  socket.on('deleteForEveryoneOnetoOne', async (messageId, userId) => {
+  socket.on('deleteForEveryoneOnetoOne', async (messageId, userId,messageText) => {
     try {
       const response = await fetch(`http://localhost:5000/message/deleteForEveryone/${messageId}`, {
         method: 'DELETE'
@@ -357,7 +387,7 @@ io.on('connection', async (socket) => {
         const receiverSocketId = Object.keys(userSocketMap).find(
           (key) => userSocketMap[key] === userId
         );
-        socket.emit('messageDeletedForEveryoneOnetoOne', savedMessage);  // Emit to sender
+        socket.emit('messageDeletedForEveryoneOnetoOne', savedMessage,messageText);  // Emit to sender
         if (receiverSocketId) {
           io.to(receiverSocketId).emit('messageDeletedForEveryoneOnetoOne', savedMessage); // Emit to receiver
         }
@@ -813,7 +843,7 @@ io.on('connection', async (socket) => {
 });
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({origin:'http://localhost:5173',credentials:true}));
 
 // Routes
 app.use('/auth', authRoutes);

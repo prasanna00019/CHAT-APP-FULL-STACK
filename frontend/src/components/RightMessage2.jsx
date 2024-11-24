@@ -11,11 +11,13 @@ import wallpaper from '../assets/wallpaper2.jpeg'
 import PinEntry from './PinEntry';
 import scrolldown from '../assets/Scroll-down.png'
 import starred from '../assets/starred.png'
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import MessageInfo from './MessageInfo';
 import pin12 from '../assets/pin.png'
 import a2 from '../assets/a2.svg'
 const RightMessage2 = ({newMessage1, setNewMessage1}) => {
   const { socket, registerUser } = useContext(SocketContext);
+  const storage = getStorage();
   const { users, clickedId, setclickedId, Authuser, setAuthuser , } = useAuthContext();
   const [replyingTo, setReplyingTo] = useState(null);
   const chatContainerRef = useRef(null); // Reference for the chat container
@@ -31,6 +33,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
   const [inputPin, setInputPin] = useState('');
   const [error, setError] = useState(null);
   const [newMessage, setNewMessage] = useState('');
+  const [image, setImage] = useState(null);
   const [searchBar, setSearchBar] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
@@ -188,7 +191,6 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
         .then((res) => res.json())
         .then((data) => {
           setMessages2(data);
-          console.log(data);
         })
         .catch((error) => console.error("Error fetching messages:", error));
     }
@@ -207,7 +209,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     setUserId(Authuser._id);
     if (clickedId) {
       registerUser(userId);
-      console.log(clickedId, Authuser._id, " RIGHT MESSAGE 2 .JSX")
+      // console.log(clickedId, Authuser._id, " RIGHT MESSAGE 2 .JSX")
     }
   }, [clickedId, Authuser])
   function encryptMessage(message, secretKey) {
@@ -236,9 +238,16 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       }
     </div>
   );
+  const handle1=async(data,index)=>{
+    // console.log(index);
+    console.log(data,index);
+    socket.emit('deleteMessageForMeOneToOneUndo', data, Authuser._id,index);
+  }
+  const handle2=async(data,text,receiver)=>{
+    socket.emit('DMEOneToOneUndo', data,receiver,text);
+  }
   const handleSearch = async (input) => {
     const conversationId = '671000e4fd882638d545ef7e';
-
     try {
       const response = await fetch("http://localhost:5000/message/search/", {
         method: "POST",
@@ -290,6 +299,14 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     }
     setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === data._id ? data : msg));
     // setNewMessage1(!newMessage1);  
+    });
+    // messageUpdatedUndoOneToOne
+    socket.on('messageUpdatedUndoOneToOne', (updatedMessage,index) => {
+      setMessages2((prevMessages) => {
+        const updated = [...prevMessages];
+        updated.splice(index, 0, updatedMessage); // Insert at the correct index
+        return updated;
+      });
     })
     socket.on('user_online', ({ userId, online, lastSeen }) => {
       console.log(`User ${userId} is online , status is ${lastSeen} online is ${online}`);
@@ -331,11 +348,36 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     socket.on('stop-typing', () => {
       setIsTyping(false);
     });
-    socket.on('messageDeletedForMeOnetoOne', (data) => {
-      console.log(data);
+    socket.on('DMEOneToOneUpdated', (updatedMessage) => {
+      setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === updatedMessage._id ? updatedMessage : msg));    
+  })
+    socket.on('messageDeletedForMeOnetoOne', (data,index) => {
+      // console.log(data,index);
       setMessages2((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
+   messages2.sender===Authuser._id &&   toast.success(
+        <div>
+          <p>DELETED FOR ME</p>
+          <button 
+            onClick={() => {     handle1(data,index);       }}  
+            style={{
+              marginTop: '10px',
+              padding: '5px 10px',
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            UNDO
+          </button>
+        </div>,
+        {
+          duration: 5000, // Optional: auto close after 5 seconds
+        }
+      );
     });
-    socket.on('messageDeletedForEveryoneOnetoOne', (deletedMessage) => {
+    socket.on('messageDeletedForEveryoneOnetoOne', (deletedMessage,text) => {
       // console.log(deletedMessage, 'message deleted for everyone onetoone');
       if (deletedMessage.deletedForEveryone) {
         setMessages2((prevMessages) => prevMessages.filter((msg, index) =>
@@ -347,7 +389,34 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
         //     msg._id === deletedMessage._id ? { ...msg, text: encryptMessage('DELETED FOR EVERYONE', secretKey) } : msg
         //   )
         // );
-        setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === deletedMessage._id ? deletedMessage : msg));
+        // setMessages2((prevMessages) => prevMessages.map((msg) => msg._id === deletedMessage._id ? deletedMessage : msg));
+        setMessages2((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? { ...msg, text: encryptMessage('DELETED FOR EVERYONE',secretKey) ,flaggedForDeletion: true} : msg
+          )
+        );
+       messages2.sender===Authuser._id &&   toast.success(
+          <div>
+            <p>DELETED FOR EVERYONE</p>
+            <button 
+              onClick={() => { handle2(deletedMessage,text,deletedMessage.receiver) }}  
+              style={{
+                marginTop: '10px',
+                padding: '5px 10px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+            >
+              UNDO
+            </button>
+          </div>,
+          {
+            duration: 5000, // Optional: auto close after 5 seconds
+          }
+        );
       }
     });
     socket.on('messageEditedOnetoOne', (data) => {
@@ -371,11 +440,20 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       socket.off('messageDeletedForMeOnetoOne');
       socket.off('messageReactedOneToOne');
       socket.off('messageDeletedForEveryoneOnetoOne');
-
+      socket.off('updateMessagesZEN');
+      socket.off('messageUpdatedUndoOneToOne');
     };
   }, [socket,Authuser._id]);
-  const handleSendMessage = () => {
-    if (newMessage.trim() === '') return;
+  const handleSendMessage =async () => {
+    if (newMessage.trim() === '' && !image) return;
+    var url='';
+    if (image) {
+      const imageRef = ref(storage, `OneToOneImages/${Authuser._id}/${receiverId}/${image.name}`);
+      await uploadBytes(imageRef, image);
+      url = await getDownloadURL(imageRef);
+      console.log(url);
+      
+    }
     const encyptmsg = encryptMessage(newMessage, secretKey);
     const messageData = {
       sender: Authuser._id,
@@ -383,11 +461,16 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
       message: encyptmsg,
       reply: replyingTo || null,
       type:"text",
+      media:url ||"",
     }
     socket.emit('sendMessageOneToOne', messageData);
     // setMessages2((prevMessages) => [...prevMessages, messageData]);
     setNewMessage('');
+    setImage(null);
   }
+  const handleImageChange = (event) => {
+    setImage(event.target.files[0]);
+  };
   const handleTyping = () => {
     socket.emit('typing', { receiverId });
     clearTimeout(typingTimeout.current);
@@ -419,7 +502,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
   return (
     <div className='flex gap-4'>
       <div>
-        <Toaster />
+        {/* <Toaster /> */}
         {/* <h2>{isLocked ? 'Chat Locked' : <div>Chat Unlocked
           <button className='ml-3' onClick={() => { setIsLocked(true) }}>LOCK</button>
         </div>}</h2> */}
@@ -498,6 +581,10 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
         </> 
     )}
         {clickedId && <>
+          <input
+  type="file"
+  onChange={handleImageChange}
+  accept="image/*,audio/mp3,video/mp4,application/pdf"/>
             <TextField
               label="Enter your message..."
               fullWidth

@@ -153,7 +153,7 @@ export const sendMessageGroup = async (req, res) => {
   }
   export const deleteMessageById = async (req, res) => {
     try {
-      const messageId = req.params.messageId; // assuming you're passing the message ID as a route parameter
+      const messageId = req.params.messageId; 
       const message = await GroupMessage.findById(messageId);
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });

@@ -77,7 +77,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
       .slice(0, 4);
   };
   return (
-    <div>
+    <div >
       <h2 className='font-bold text-2xl mt-3 bg-black text-white'>#TRENDING</h2>
       <ul>
         {trendingHashtags.map(([hashtag, count]) => (
@@ -95,7 +95,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
       </ul>
       {selectedHashtag && (
         <TrendingMessages messagesWithHashtag={messagesWithHashtag} onClose={handleClose}
-         clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId}
+         selectedHashtag={selectedHashtag}  clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId}
         />
       )}
     </div>

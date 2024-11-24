@@ -7,7 +7,7 @@ import { io } from "../server.js";
 // Function to send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { message,replyTo,type } = req.body; 
+    const { message,replyTo,media,type } = req.body; 
     const receiverId = req.params.toId;
     const senderId = req.params.fromId;
     // Check if the receiver is online
@@ -40,6 +40,7 @@ export const sendMessage = async (req, res) => {
       reply:replyTo ,
       type: type,
       deletedForEveryone: false,
+      media:media,
       deletedFor: [],
       reactions: [],
       status: {
@@ -130,7 +131,8 @@ export const deleteMessageForEveryone = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-     if (!message.deletedForEveryone && decryptMessage(message.text,secretKey)==='DELETED FOR EVERYONE') {
+     if (!message.deletedForEveryone && decryptMessage(message.text,secretKey)==='DELETED FOR EVERYONE' 
+     && message.flaggedForDeletion) {
       // If the message is already marked as deleted for everyone, remove it from the database
       const m=await Message.findById(messageId);
       m.deletedForEveryone=true;
@@ -146,7 +148,8 @@ export const deleteMessageForEveryone = async (req, res) => {
     }
     else {
       message.text = encryptMessage('DELETED FOR EVERYONE',secretKey);
-      message.deletedForEveryone = false;
+      // message.deletedForEveryone = false;
+      message.flaggedForDeletion=true;
       await message.save();
       res.status(200).json(message);
       return;
@@ -383,7 +386,7 @@ export const getLastMessage = async (req, res) => {
       // Fetch the last message in this conversation based on messages array
       if (conversation.messages && conversation.messages.length > 0) {
         // Sort messages by createdAt descending to get the latest message
-        const lastMessage = await Message.findOne({ _id: { $in: conversation.messages } })
+        const lastMessage = await Message.findOne({ _id: { $in: conversation.messages }, deletedFor: { $ne: authUserId } })
           .sort({ sentAt: -1 }); // Get the most recent message
           console.log(lastMessage)
         // Get the other participant's ID
@@ -397,6 +400,7 @@ export const getLastMessage = async (req, res) => {
         return {
           conversationId: conversation._id,
           otherParticipant,
+          // deletedFor: lastMessage? lastMessage.deletedFor:[],
           lastMessage: lastMessage ? lastMessage.text : 'No messages till now',
           lastMessageTime: lastMessage ? lastMessage.sentAt : null,
           lastMessageStatus: lastMessage ? lastMessage.status.state : null,

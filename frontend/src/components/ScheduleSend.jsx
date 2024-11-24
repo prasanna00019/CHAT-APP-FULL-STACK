@@ -17,7 +17,7 @@ const ScheduleSend = ({ setDelay }) => {
 
   const handleSchedule = () => {
     const delay = calculateDelay();
-    console.log(delay);
+    // console.log(delay);
     setDelay(delay);
     // console.log('delay set');
     // handleSendMessage(delay);

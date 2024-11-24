@@ -15,6 +15,10 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  media: {
+    type: String,
+    default: "",
+  },
   sentAt: {
     type: Date,
     default: Date.now, 
@@ -27,6 +31,10 @@ const messageSchema = new mongoose.Schema({
   deletedForEveryone: {
     type: Boolean,
     default: false,  
+  },
+  flaggedForDeletion: {
+    type: Boolean,
+    default: false,
   },
   deletedFor: [{
     type: mongoose.Schema.Types.ObjectId,

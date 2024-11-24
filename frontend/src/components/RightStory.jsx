@@ -22,7 +22,7 @@ const RightStory = () => {
   const [ClickLike, setClickLike] = useState(false);
   const [progress, setProgress] = useState(0);
   const { socket } = useContext(SocketContext);
-  const { Authuser } = useAuthContext();
+  const { Authuser ,userMap} = useAuthContext();
   const displayDuration = 3000; 
   const {GROUP_CHAT_SECRET_KEY}=useLogout()
   const [viewers, setViewers] = useState([]); 
@@ -171,9 +171,9 @@ const RightStory = () => {
     if (clickedUserId && stories.length > 0) {
       updateViewCount(stories[currentStoryIndex]._id, Authuser._id);
     }
-    // if (currentStoryIndex === stories.length - 1) {
-      // setClickedUserId(null);
-    // }
+    if (currentStoryIndex === stories.length - 1) {
+      setClickedUserId(null);
+    }
   }, [clickedUserId, currentStoryIndex, setClickedUserId, stories]);
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
@@ -286,7 +286,8 @@ const RightStory = () => {
         </div>}
       {/* Story content */}
       <div className='p-4'>
-        <h3 className='text-xl mb-2'>{currentStory.username}'s Story</h3>
+        {/* <h3 className='text-xl mb-2'>{currentStory.username}'s Story</h3> */}
+        <h3>{userMap[currentStory.userId]}</h3>
         <p>{currentStory.content}</p>
         <TextField
           label="Type your message..."

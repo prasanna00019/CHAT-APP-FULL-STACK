@@ -7,10 +7,15 @@ import reaction from '../assets/reaction (1).png';
 import { Dialog, DialogTitle, DialogContent} from '@mui/material';
 import reply from '../assets/reply.png';
 import bluetick from '../assets/blue-double.png'
+import ban from '../assets/ban.png'
+import dustbin from '../assets/dustbin.png';
+import CloseIcon from '@mui/icons-material/Close';  
 import normaltick from '../assets/normal-double.png'
+import forwardicon from '../assets/forward1.png'
 import { Button, DialogActions, DialogContentText, FormControl, FormControlLabel, IconButton, Modal, Radio, RadioGroup, TextField } from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
 import ForwardMessageDialog from './ForwardMessageDialog';
+import { toast } from 'react-toastify';
 const Message = forwardRef((props,ref) => {
   const { setMessages2, messages2 ,userId,replyingTo, setReplyingTo, message2,
   messageRefs,setShowMessageInfo,showMessageInfo
@@ -35,6 +40,13 @@ const Message = forwardRef((props,ref) => {
   const handlePinClick = () =>setIsPinDialogOpen(true);
   const secretKey = '!@#$%^y7gH*3xs'; // This key should be kept secret
   const [openReaction, setOpenReaction] = useState(false);
+  const [open,setOpen]=useState(false);
+  const handleClickOpenImage = () => {
+    setOpen(true);
+  };
+  const handleCloseImage = () => {
+    setOpen(false);
+  };
   const ReadReceipts=users.find(user=>user._id===message2.receiver)?.ReadReceipts;   
   const ReadReciepts2=users.find(user=>user._id===message2.sender)?.ReadReceipts;
   // console.log(ReadReceipts)
@@ -92,14 +104,42 @@ const Message = forwardRef((props,ref) => {
     return encryptedMessage;
   }
 } 
+const showDeleteToast = (message, onUndo) => {
+  toast.success(
+    ({ closeToast }) => (
+      <div>
+        <p>{message}</p>
+        <button onClick={() => { onUndo(); closeToast(); }} style={buttonStyle}>
+          UNDO
+        </button>
+      </div>
+    ),
+    { autoClose: 10000, progress: undefined } // 10 seconds with progress bar
+  );
+};
+const buttonStyle = {
+  marginTop: '5px',
+  padding: '5px 10px',
+  backgroundColor: '#4CAF50',
+  color: 'white',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: 'pointer',
+};
   const handleDelete = async () => {
     try {
       if (deleteOption === 'forMe') {
-        socket.emit('deleteForMeOnetoOne', message2._id, message2.sender);
+        showDeleteToast('MESSAGE DELETED FOR ME', () => {
+          // Undo delete logic here
+          console.log('Undo delete!');
+        });
+        const index = messages2.findIndex((msg) => msg._id === message2._id);
+        // console.log(index," from message.jsx ... ")
+        socket.emit('deleteForMeOnetoOne', message2._id,message2.sender,index);
         setMessages2(prevMessages => prevMessages.filter(msg => msg._id !== message2._id));
       } else if (deleteOption === 'forEveryone') {
         console.log(message2.receiver," from message.jsx ... ")
-        socket.emit('deleteForEveryoneOnetoOne', message2._id, message2.receiver);
+        socket.emit('deleteForEveryoneOnetoOne', message2._id, message2.receiver,message2.text);
       }
       setShowModal(false); // Close the modal after deletion
     } catch (error) {
@@ -189,7 +229,7 @@ const Message = forwardRef((props,ref) => {
     if (message2) {
       fetchMessage(message2._id);
     }
-  }, [message2.text,message2,socket]);
+  }, [message2,socket]);
   return (
     <>
       {
@@ -202,10 +242,63 @@ const Message = forwardRef((props,ref) => {
                {message2.type==='story' && message2.receiver===Authuser._id && <span className='italic text-gray-500'>REPLIED TO YOUR STORY</span> }   
                {message2.type==='automated'&& <span className='italic text-gray-500'>AUTOMATED MESSAGE</span>}       
               {currentMessage.reply && renderReply(currentMessage.reply)}
-              <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/>
-              <p>{currentMessage.sender===Authuser._id?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,secretKey)}</p>
+              {!message2.flaggedForDeletion && <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/>}
+              <div className='flex gap-3 justify-between'>
+{message2.flaggedForDeletion && <img src={ban} className='ml-2 ' width={30} height={20} alt="" /> }
+{message2.flaggedForDeletion && <img className='hover:cursor-pointer'  onClick={() =>{socket.emit('deleteForEveryoneOnetoOne', message2._id, message2.receiver,message2.text);}} src={dustbin} width={30} height={5} alt="" />
+}
+</div>
+              <p className={`${message2.flaggedForDeletion?'italic':''} ${message2.flaggedForDeletion && 'text-gray-600 text-2xl'}` }>
+              {/* {message2.media && <img src={message2.media} width={200} height={50} onClick={handleClickOpenImage} />}  */}
+              {message2.media && !message2.flaggedForDeletion && (
+      <div onClick={handleClickOpenImage}>
+      {currentMessage.media.includes('.pdf') ? <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'>PDF</button> :
+     currentMessage.media.includes('.mp4') ? <video src={currentMessage.media} width={400} controls></video> :  
+     currentMessage.media.includes('.mp3') ? <audio src={currentMessage.media} controls></audio> :
+     currentMessage.media.includes('png') || currentMessage.media.includes('jpg') || currentMessage.media.includes('jpeg') 
+     || currentMessage.media.includes('gif') || currentMessage.media.includes('svg') || currentMessage.media.includes('webp') ? <img src={message2.media} width={200} height={50} onClick={handleClickOpenImage} />:
+     ""}
+    </div>
+  )}
+
+              <Dialog open={open} onClose={handleClose} maxWidth="lg">
+  <DialogActions>
+    <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
+      <CloseIcon />
+    </IconButton>
+  </DialogActions>
+  <DialogContent>
+    {currentMessage.media.includes('.pdf') ? (
+      <iframe 
+        src={currentMessage.media}
+        title="PDF Viewer"
+        style={{ width: '1000px', height: '500px', border: 'none' }}
+      ></iframe>
+    ) : (
+      currentMessage.media.includes('.mp4') ? (
+        <video controls>
+          <source src={currentMessage.media} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      ):
+      currentMessage.media.includes('.mp3') ? (
+        <audio controls>
+          <source src={currentMessage.media} type="audio/mpeg" />
+          Your browser does not support the audio tag.
+        </audio>
+      ):
+      <img
+        src={currentMessage.media}
+        alt="Large View"
+        style={{ width: '100%', height: 'auto' }}
+      />
+    )}
+  </DialogContent>
+</Dialog>
+
+                {currentMessage.sender===Authuser._id?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,secretKey)}</p>
              {/* {console.log(users.find(user => user._id === message2.receiver))} */}
-              {message2.sender === Authuser._id ? (
+              {message2.sender === Authuser._id &&  !message2.flaggedForDeletion ? (
   message2.status.state === 'read' ? (
 <span> <img src={(ReadReceipts && !ReadReciepts2) ||(ReadReciepts2 && !ReadReceipts) ||(!ReadReciepts2 && !ReadReceipts) ? normaltick:bluetick} width={30} height={10} alt="" /> </span> // Blue double tick
 ) : message2.status.state === 'delivered' ? (
@@ -216,31 +309,29 @@ const Message = forwardRef((props,ref) => {
  '7'
 )
 ) : null}
-          {/* <p>{currentMessage.sender===Authuser._id ? "YOU ": currentMessage.sender}:{currentMessage.text}</p> */}
-          {/* <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message2._id)}}/> */}
-          {/* <span>{tickIcon}</span> */}
+      
           { (
             <>
-              <Button variant="contained" color="secondary" onClick={openDeleteModal}>
-                DELETE
-              </Button>
-             { message2.sender ===userId && 
+              {!message2.flaggedForDeletion && <Button variant="contained" color="secondary" onClick={openDeleteModal}>
+              DELETE
+            </Button>}
+             { message2.sender ===userId && !message2.flaggedForDeletion &&
               <Button onClick={openEditModal} variant="contained" color="primary">
                 EDIT
               </Button>
 }
             </>
           )}
-          <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,secretKey));}}>
+         {!message2.flaggedForDeletion && <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,secretKey));}}>
             COPY
-          </button>
-           <Button onClick={handlePinClick}>
+          </button>}
+          {!message2.flaggedForDeletion && <Button onClick={handlePinClick}>
             {message2.pinned.isPinned ? 'UNPIN' : 'PIN'}
-           </Button>
-          <button className="ml-5" onClick={() => socket.emit('starMessageOneToOne', message2._id,userId)}>
+           </Button>}
+         {!message2.flaggedForDeletion && <button className="ml-5" onClick={() => socket.emit('starMessageOneToOne', message2._id,userId)}>
             {Authuser?.starredMessages?.includes(message2._id) ? 'UNSTAR' : 'STAR'}
-          </button>
-         <div className=' flex gap-3 mt-3 justify-between'>
+          </button>}
+       { !message2.flaggedForDeletion && <div className=' flex gap-3 mt-3 justify-between'>
           <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
           {
             message2?.reactions?.map(reaction => (
@@ -248,7 +339,7 @@ const Message = forwardRef((props,ref) => {
                 ))
            }
              <button className='mr-3' onClick={openForwardModal}>
-            FORWARD
+            <img src={forwardicon} height={20} width={20} alt="" />
           </button>
            {
             message2.sender===Authuser._id && 
@@ -257,7 +348,7 @@ const Message = forwardRef((props,ref) => {
           }
           } height={10} alt="" />
                         }  
-          </div> 
+          </div> }
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
            <ForwardMessageDialog
         open={showForwardModal}

@@ -1,16 +1,11 @@
 import mongoose from "mongoose";
 import Message from "../models/MessageModel.js";
 import Conversation from "../models/ConversationModel.js";
+import Group from "../models/GroupModel.js";
 const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI)
         console.log("connected to mongo DB");
-        // const result=await Message.updateMany(
-        //     {},
-        //     {$set:{type:"text"}}
-        // );
-        // console.log(`updated ${result.modifiedCount} documents`);
-      
     } catch (error) {
         console.log("error conencting")
     }

@@ -14,6 +14,8 @@ import scrolldown from '../assets/Scroll-down.png'
 import { decryptMessage, encryptMessage } from '../helper_functions';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import ScheduleSend from './ScheduleSend';
+import a2 from '../assets/a2.svg'
+
 import toast from 'react-hot-toast';
 // import AutocompleteInput from './AutocompleteInput';
 const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
@@ -32,6 +34,7 @@ const [open, setopen] = useState(false);
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const { userMap,Authuser } = useAuthContext();
   const [showMessageInfo, setShowMessageInfo] = useState(null);
+  const [showAI, setShowAI] = useState(null);
   const [searchBar,setSearchBar]=useState(false)
   const [searchTerm, setSearchTerm] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
@@ -47,7 +50,7 @@ const [open, setopen] = useState(false);
   const openInfoModal = () => setShowModal(true);
   const [delay,setDelay]=useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+  // const [marginLeft, setMarginLeft] = useState(0);
   const handleClickOpen = () => {
     setopen(true);
   }
@@ -224,9 +227,8 @@ const [open, setopen] = useState(false);
     messageRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
-    // Cleanup the observer on component unmount
     return () => {
-      observer.disconnect(); // Disconnect the observer to avoid memory leaks
+      observer.disconnect();
     };
   }, [messages]);
   const handle1=async(data,index)=>{
@@ -236,13 +238,12 @@ const [open, setopen] = useState(false);
   const handle2=async(data,text)=>{
     socket.emit('DMEgroupUndo', data, userId,text);
   }
-  // Listen for new messages from the server
   useEffect(() => {
     socket.on('receiveMessage', (messageData) => {
       // console.log('New message received:', messageData);
-     if(clickedGroupId===messageData.group){ 
+    //  if(clickedGroupId===messageData.group){ 
       setMessages((prevMessages) => [...prevMessages, messageData]);
-     }
+    //  }
      setMessages((prevMessages) => prevMessages.map((msg) => msg._id === messageData._id ? messageData : msg));
     });
     socket.on('groupUpdated', (updatedGroup) => {
@@ -269,7 +270,7 @@ const [open, setopen] = useState(false);
     })
     socket.on('messageUpdatedUndo', (updatedMessage,index) => {
       // setMessages((prevMessages) => [...prevMessages, updatedMessage])
-      console.log(index);
+      // console.log(index);
       setMessages((prevMessages) => {
         const updated = [...prevMessages];
         updated.splice(index, 0, updatedMessage); // Insert at the correct index
@@ -279,7 +280,8 @@ const [open, setopen] = useState(false);
     socket.on('messageDeletedForMe', (data,index) => {
       // console.log(data);
       setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
-      toast.success(
+     
+    data.sender=== Authuser._id &&  toast.success(
         <div>
           <p>DELETED FOR ME</p>
           <button 
@@ -302,11 +304,12 @@ const [open, setopen] = useState(false);
         }
       );
 
-    });
+    }
+  );
     // Handling here the 'messageDeletedForEveryone' event to update the UI for all users
     socket.on('messageDeletedForEveryone', (deletedMessage,text) => {
       if (deletedMessage.deletedForEveryone) {
-        setMessages((prevMessages) => prevMessages.filter((msg, index) =>
+        setMessages((prevMessages) => prevMessages.filter((msg) =>
           msg._id !== deletedMessage._id));
       }
       else {
@@ -315,7 +318,7 @@ const [open, setopen] = useState(false);
             msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE' ,flaggedForDeletion: true} : msg
           )
         );
-        toast.success(
+      deletedMessage.sender=== Authuser._id &&   toast.success(
           <div>
             <p>DELETED FOR EVERYONE</p>
             <button 
@@ -411,10 +414,7 @@ const [open, setopen] = useState(false);
     }, 1000); // Stop typing after 1 second of inactivity
   };
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '' && !image)
-      { 
-      return 
-      }
+    if (newMessage.trim() === '' && !image) {return}
   var url='';
   if (image) {
     const imageRef = ref(storage, `GroupImages/${image.name}`);
@@ -476,7 +476,8 @@ const [open, setopen] = useState(false);
   return (
   //  <div className='flex gap-3 min-w-[780px]'>
     <div className='bg-white h-full min-w-[760px] shadow-xl shadow-green-300
-    rounded-3xl  mr-[300px] ml-44  flex ' style={{backgroundImage: `url(${wallpaper})`}}>
+    rounded-3xl  mr-[300px]   flex ' style={{backgroundImage: `url(${wallpaper})`,
+     marginLeft:`${(showMessageInfo!==null || showPinnedMessages || showStarredMessages|| searchBar ||showAI!==null )  ? '-80px' : '150px' }`}}>
       <div className='min-w-[760px]'>
       {/* Group Info */}
       {currentGroupInfo ? (
@@ -513,12 +514,13 @@ const [open, setopen] = useState(false);
 </div> 
         </div>
       ) : (
-        "No Group Selected"
+        ""
       )}
 
       {/* Message Container */}
       <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: '400px' }}>
         { loading  ? (
+          clickedGroupId &&
           <p>Loading messages...
 
           </p>
@@ -531,6 +533,7 @@ const [open, setopen] = useState(false);
             <GroupMessage ref={(el) => (messageRefs.current[index] = el)} onClick={() => console.log(msg._id, " from rightour")} key={index} message={msg}
             setMessages={setMessages} messages={messages} userId={userId} replyingTo={replyingTo} setReplyingTo={setReplyingTo}
             messageRefs={messageRefs} setShowMessageInfo={setShowMessageInfo} showMessageInfo={showMessageInfo}
+            showAI={showAI} setShowAI={setShowAI}
             dataMessageId={msg._id}  
             dataMessageSender={msg.group}
             groups={groups}
@@ -561,7 +564,12 @@ const [open, setopen] = useState(false);
     {currentGroupInfo?.participants?.includes(userId) ? ( 
       // Replace `authUserId` with the variable that holds the current authenticated user's ID
       <>
-        <input type="file" onChange={handleImageChange} />
+       <input
+  type="file"
+  onChange={handleImageChange}
+  accept="image/*,audio/mp3,video/mp4,application/pdf"
+/>
+
         <TextField
           label="Type your message..."
           fullWidth
@@ -577,7 +585,7 @@ const [open, setopen] = useState(false);
           }}
         />
         <Button onClick={handleSendMessage} variant="contained" color="primary">
-          Send
+           Send
         </Button>
         <ScheduleSend setDelay={setDelay} />
       </>
@@ -586,7 +594,12 @@ const [open, setopen] = useState(false);
     )}
   </>
 ) : (
-  "CLICK ON ANY GROUP TO START CHATTING"
+  !clickedGroupId && 
+  (<>
+  <img src={a2} className='m-auto mt-[50px]' alt="" />  
+  <div className='text-3xl text-gray-500'>CLICK TO BEGIN CHATTING</div>
+  </>)
+
 )}
 
         <Dialog open={showModal} onClose={closeInfoModal}>
@@ -605,7 +618,6 @@ const [open, setopen] = useState(false);
               <div>
 {          <button className='mr-2' onClick={handleClickOpen}>ADD MEMBERS</button>
 }                {new Date(currentGroupInfo?.createdAt).toLocaleDateString()}
-                {/* {console.log(currentGroupInfo)} */}
               </div>
             }
           </DialogContent>
@@ -663,10 +675,10 @@ const [open, setopen] = useState(false);
       </div>
       </div>
       {
-        (showPinnedMessages || showStarredMessages || showMessageInfo!==null || searchTerm!=='') && 
+        (showPinnedMessages || showStarredMessages || showMessageInfo!==null || searchTerm!==''|| showAI!==null) && 
         <MessageInfo showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} showMessageInfo={showMessageInfo} searchTerm={searchTerm} 
         setShowPinnedMessages={setShowPinnedMessages} setShowStarredMessages={setShowStarredMessages} setShowMessageInfo={setShowMessageInfo} setSearchTerm={setSearchTerm}
-        IsGroupInfo={true} 
+        IsGroupInfo={true}  showAI={showAI} setShowAI={setShowAI}
         searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages}
         />
       }

@@ -94,11 +94,17 @@ export const getMessagesByGroupId = async (req, res) => {
 }
 export const getLastMessageOfAllGroups = async (req, res) => {
   try {
+    const { authUserId } = req.params;
     const groupIds = await Group.find().distinct('_id');
     const groupsWithLastMessage = await Promise.all(groupIds.map(async (groupId) => {
       const messages = await GroupMessage.find({ group: groupId }).sort({ createdAt: 1 });
       const lastMessage = messages[messages.length - 1];
-      return { _id: groupId, lastMessage };
+      // const unreadCount = messages.filter((msg) =>
+      //   msg.status.some((status) =>
+      //     status.userId === authUserId && status.state !== 'read'
+      //   )
+      // ).length;
+      return { _id: groupId, lastMessage};
     }));
     res.json(groupsWithLastMessage);
   } catch (error) {

@@ -7,7 +7,7 @@ router.get('/get-messageDeliveryAndReadTime/:messageId',getMessageDeliveryAndRea
 router.get('/get-senderId-from-messageId/:messageId',getSenderIdFromMessageId)
 router.get('/getMessageById/:messageId',getMessageById)
 router.delete('/deleteForEveryone/:messageId',deleteMessageForEveryone);
-router.delete('/deleteForMe/:messageId/:userId',deleteMessageForMe);
+router.patch('/deleteForMe/:messageId/:userId',deleteMessageForMe);
 router.put('/edit/:messageId',editMessage);    
 router.put('/starred/:messageId',starMessage);
 router.put('/pinned/:messageId',pinMessage);

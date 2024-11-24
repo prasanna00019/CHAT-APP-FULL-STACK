@@ -12,8 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { SocketContext } from '../context/SocketContext';
 const Home = () => {
   const { Authuser, setAuthuser } = useAuthContext();
-  const [chat, setChat] = useState(true);
-  const [group, setgroup] = useState(false);
+  const [chat, setChat] = useState(false);
+  const [group, setgroup] = useState(true);
   const [stories, setStories] = useState(false);
   const {  setclickedId ,clickedId} = useAuthContext();
   const {socket}=useContext(SocketContext);

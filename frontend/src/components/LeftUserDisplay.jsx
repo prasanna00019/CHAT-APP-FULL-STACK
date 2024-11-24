@@ -39,17 +39,16 @@ const LeftUserDisplay = ({ userId }) => {
   const fetchLastMessagesOfAllConversations = async () => {
     try {
       const res = await axios.get(`http://localhost:5000/message/last-message/${Authuser._id}`);
-      console.log(res.data);
       const lastMessageMap = res.data.reduce((acc, conversation) => {
         acc[conversation.otherParticipant] = {
           text: conversation.lastMessage,
           status: conversation.lastMessageStatus,
           time: conversation.lastMessageTime,
           unreadCount: conversation.unreadCount,
+          // deletedFor: conversation?.deletedFor,
         };
         return acc;
       }, {});
-      console.log(lastMessageMap);
       setlastMessage(lastMessageMap);
     } catch (error) {
       console.error('Error fetching last messages for all conversations:', error);
@@ -145,7 +144,7 @@ const LeftUserDisplay = ({ userId }) => {
 </div>
         <div className="flex flex-col border border-black p-2 w-[290px] shadow-blue-100 shadow-lg">
           <ul>
-            {users.filter(user => user.username.toLowerCase().includes(searchQuery.toLowerCase())&& (readRoute===true?(lastMessage[user._id]?.unreadCount==0||lastMessage[user._id]?.unreadCount===undefined || lastMessage[user._id]?.unreadCount>0):lastMessage[user._id]?.unreadCount>0)  )
+            {users.filter(user => user.username.toLowerCase().includes(searchQuery.toLowerCase() )&& (readRoute===true?(lastMessage[user._id]?.unreadCount==0||lastMessage[user._id]?.unreadCount===undefined || lastMessage[user._id]?.unreadCount>0):lastMessage[user._id]?.unreadCount>0)  )
               .sort((u1, u2) => {
                 const time1 = new Date(lastMessage[u1._id]?.time || 0).getTime();
                 const time2 = new Date(lastMessage[u2._id]?.time || 0).getTime();
@@ -179,6 +178,7 @@ const LeftUserDisplay = ({ userId }) => {
                 
                 </div>
                 <div className='flex gap-2 justify-between'>
+
                 <p className='text-[18px]'>
               
                   {/* {  lastMessage[user._id]?.text ? decryptMessage(lastMessage[user._id].text, secretKey) : <p className='italic text-gray-400'>CLICK TO START CHAT</p>
@@ -186,7 +186,7 @@ const LeftUserDisplay = ({ userId }) => {
                 } */}
               <div className='flex gap-2 justify-evenly'>
                 <div>
-                {lastMessage[user._id]?.status==='read' ? <img src={bluetick} className='mt-2' width={20} height={20} alt="" /> :lastMessage[user._id]?.status==='delivered' ? <img src={normaltick} className='mt-1' width={20} height={20} alt="" />:lastMessage[user.id]?.status==='sent'? <span>✔</span>:""}
+                { lastMessage[user._id]?.status==='read' ? <img src={bluetick} className='mt-2' width={20} height={20} alt="" /> :lastMessage[user._id]?.status==='delivered' ? <img src={normaltick} className='mt-1' width={20} height={20} alt="" />:lastMessage[user.id]?.status==='sent'? <span>✔</span>:""}
                 </div>
                 <div>
                 {

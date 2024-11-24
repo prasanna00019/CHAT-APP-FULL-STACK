@@ -46,11 +46,6 @@ function App() {
         <Route path='/login' element={Authuser ? <Navigate to='/' /> : <Login />} />
         <Route path='/signup' element={Authuser ? <Navigate to={'/login'} /> : <Signup />} />
         <Route path='/reset-password' element={<ResetPassword />} />
-        <Route path="/groups" element={  <LeftGroup userId={Authuser._id} />} />
-        <Route path="/stories" element={  <>
-          <LeftStory  userId={Authuser._id}/>
-          <RightStory />
-        </>} />
         <Route path='/user-profile' element={<UserProfile />} />
       </Routes>
       <Toaster /> </>}

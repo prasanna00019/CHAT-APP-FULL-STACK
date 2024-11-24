@@ -9,7 +9,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Radio from '@mui/material/Radio';
+import ai from '../assets/ai-technology.png'
 import ban from '../assets/ban.png'
+import pin from '../assets/pin.png'
+import star from '../assets/starred.png'
+import unstar from '../assets/star_empty.png'
+import unpin from '../assets/push-pin.png'
+import copy from '../assets/copy.png'
 import bluetick from '../assets/blue-double.png'
 import normaltick from '../assets/normal-double.png';
 import forward from '../assets/forward1.png'
@@ -30,7 +36,7 @@ import ForwardMessageGroup from './ForwardMessageGroup';
 import { toast } from 'react-toastify';
 const GroupMessage =forwardRef((props,ref) => {
 const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs,
-  setShowMessageInfo,showMessageInfo, dataMessageId,
+  setShowMessageInfo,showMessageInfo, dataMessageId, showAI, setShowAI,
   dataMessageSender ,groups
 }=props;
 const {GROUP_CHAT_SECRET_KEY}=useLogout();
@@ -60,7 +66,6 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const handleClickOpenImage = () => {
     setOpen(true);
   };
-
   const handleCloseImage = () => {
     setOpen(false);
   };
@@ -170,7 +175,11 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     borderRadius: '5px',
     cursor: 'pointer',
   };
-
+  function countWords(str) {
+    if (!str) return 0; // Handle empty or null strings
+    return str.trim().split(/\s+/).length;
+  }
+  
   const handleDelete = async () => {
     try {
       if (deleteOption === 'forMe') {
@@ -179,7 +188,6 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
           console.log('Undo delete!');
         });
         const index = messages.findIndex((msg) => msg._id === message._id);
-        console.log(index)
         socket.emit('deleteForMe', message._id, message.group,index);
         // setMessages(prevMessages => prevMessages.filter(msg => msg._id !== message._id));
       } else if (deleteOption === 'forEveryone') {
@@ -192,6 +200,10 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   };
   const toggleMessageInfo=(messageId)=>{
     setShowMessageInfo(showMessageInfo === messageId ? null : messageId);
+  }
+  const toggleSummarizeInfo=(messageId)=>{
+    setShowAI(showAI === messageId ? null : messageId);
+    // console.log(showAI);
   }
   useEffect(() => {
     const fetchMessage = async (messageId) => {
@@ -232,20 +244,6 @@ return ()=>{
   return (
     <>
               <img src={forward} height={20} width={20} alt="" onClick={openForwardModal}/>
-              { message.deletedFor.includes(userId) && (
-  <button onClick={() => {
-      socket.emit('deleteMessageForMeGroupUndo', message, userId,index);
-      setMessages((prevMessages) => 
-        prevMessages.map((msg) => 
-          msg._id === message._id 
-            ? { ...msg, deletedFor: msg.deletedFor.filter(id => id !== userId) }
-            : msg
-        )
-      );
-  }}>
-    Revert
-  </button>
-)}
       {
         !message.deletedFor.includes(userId) &&
         <div ref={ref}
@@ -254,26 +252,56 @@ return ()=>{
         className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }
         >
                                                      {currentMessage.reply && renderReply(currentMessage.reply)}
-          {currentMessage.media && <img src={currentMessage.media} width={200} height={50} onClick={handleClickOpenImage}/>} 
-          {/* <Poll/> */}
-          <Dialog open={open} onClose={handleClose} maxWidth="md">
-        <DialogActions>
-          <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogActions>
-        <DialogContent>
-
-          <img
-            src={currentMessage.media}
-            alt="Large View"
-            style={{ width: '100%', height: 'auto' }}
-          />
-        </DialogContent>
-      </Dialog>
+                                                  
+          {/* {currentMessage.media && <img src={currentMessage.media} width={200} height={50} onClick={handleClickOpenImage}/>}  */}
+          <Dialog open={open} onClose={handleClose} maxWidth="lg">
+  <DialogActions>
+    <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
+      <CloseIcon />
+    </IconButton>
+  </DialogActions>
+  <DialogContent>
+    {currentMessage.media.includes('.pdf') ? (
+      <iframe 
+        src={currentMessage.media}
+        title="PDF Viewer"
+        style={{ width: '1000px', height: '500px', border: 'none' }}
+      ></iframe>
+    ) : (
+      currentMessage.media.includes('.mp4') ? (
+        <video controls>
+          <source src={currentMessage.media} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      ):
+      currentMessage.media.includes('.mp3') ? (
+        <audio controls>
+          <source src={currentMessage.media} type="audio/mpeg" />
+          Your browser does not support the audio tag.
+        </audio>
+      ):
+      <img
+        src={currentMessage.media}
+        alt="Large View"
+        style={{ width: '100%', height: 'auto' }}
+      />
+    )}
+  </DialogContent>
+</Dialog>
           <p className={`${message.flaggedForDeletion?'italic':''} ${message.flaggedForDeletion && 'text-gray-600 text-2xl'}` }
-          >{currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
+          >
+             {!message.flaggedForDeletion &&  <div onClick={handleClickOpenImage}>
+       {currentMessage.media.includes('.pdf') ? <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'>PDF</button> :
+      currentMessage.media.includes('.mp4') ? <video src={currentMessage.media} width={400} controls></video> :  
+      currentMessage.media.includes('.mp3') ? <audio src={currentMessage.media} controls></audio> :
+      currentMessage.media.includes('png') || currentMessage.media.includes('jpg') || currentMessage.media.includes('jpeg') 
+      || currentMessage.media.includes('gif') || currentMessage.media.includes('svg') || currentMessage.media.includes('webp')
+      || currentMessage.media.includes('avif')  ? <img src={message.media} width={200} height={50} onClick={handleClickOpenImage} />:
+      ""}
+     </div>}
+            {currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
        {/* {console.log(message.status)} */}
+   
 {     !message.flaggedForDeletion &&   
    <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
 }          {/* <span>{tickIcon}</span> */}
@@ -307,20 +335,19 @@ return ()=>{
              { !message.flaggedForDeletion && <Button variant="contained" color="secondary" onClick={openDeleteModal}>
                 DELETE
               </Button>}
-             
-              {!message.flaggedForDeletion &&  message.sender ===userId && <Button onClick={openEditModal} variant="contained" color="primary">
+              {!message.flaggedForDeletion &&  message.sender ===userId && <Button style={{marginLeft:'10px'}} onClick={openEditModal} variant="contained" color="primary">
                 EDIT
               </Button>}
             </>
           )}
       { !message.flaggedForDeletion && <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
-          COPY
+          <img src={copy} width={20} height={20} className='ml-1' alt="" />
         </button>}
          { !message.flaggedForDeletion && <Button onClick={handlePinClick}>
-            { message.pinned.isPinned ? 'UNPIN' : 'PIN'}
+            { message.pinned.isPinned ? <img src={pin} width={20} height={20} alt="" /> : <img src={unpin} width={20} height={20} alt="" /> }
            </Button>}
         {!message.flaggedForDeletion &&  <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id,userId)}>
-            {currentUser?.starredMessages?.includes(message._id) ? 'UNSTAR' : 'STAR'}
+            {currentUser?.starredMessages?.includes(message._id) ? <img src={star} width={20} height={20} alt="" />: <img src={unstar} width={20} height={20} alt="" />}
           </button>}
 {     !message.flaggedForDeletion &&
      <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
@@ -329,8 +356,13 @@ return ()=>{
            <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
                 ))
            }
-          
+          <div className='flex justify-around'>
            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
+           {countWords(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY))>3 && <img 
+           onClick={()=>{toggleSummarizeInfo(message._id)}} src={ai} width={20} alt="" /> }
+          </div>
+
+           {message.editedAt!==null && <div className='italic text-gray-600'>EDITED</div> }
            {!message.flaggedForDeletion &&
             message.sender===userId && 
           <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);

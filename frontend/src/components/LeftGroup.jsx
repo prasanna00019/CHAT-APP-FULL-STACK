@@ -3,7 +3,9 @@ import axios from 'axios';
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField, Checkbox, ListItem, ListItemText, ListItemIcon } from '@mui/material';
 import toast, { Toaster } from 'react-hot-toast';
 import RightGroup from './RightGroup';
-import { SocketContext } from '../context/SocketContext';
+import encryption from '../assets/encryption.png';
+import bluetick from '../assets/blue-double.png'
+import normaltick from '../assets/normal-double.png'
 import { useStatusContext } from '../context/StatusContext';
 import wallpaper from '../assets/wallpaper2.jpeg'
 import { decryptMessage} from '../helper_functions';
@@ -19,10 +21,45 @@ const LeftGroup = ({ userId }) => {
   const [groupDescription, setGroupDescription] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [readRoute, setreadRoute] = useState(true);
   const {userMap,Authuser}=useAuthContext();
   const {GroupMap, setGroupMap} = useAuthContext()
   const [clickedGroupId, setClickedGroupId] = useState(null);
   const [lastMessage, setlastMessage] = useState({})
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+  const highlightQuery = (name, query) => {
+    if (!query) return name;
+  
+    const regex = new RegExp(`(${query})`, 'i'); // Case-insensitive match
+    const parts = name.split(regex);
+  
+    return (
+      <span>
+        {parts.map((part, index) =>
+          regex.test(part) ? (
+            <span key={index} style={{ color: 'green', fontWeight: 'bold' }}>
+              {part}
+            </span>
+          ) : (
+            <span key={index} style={{ color: 'black' }}>
+              {part}
+            </span>
+          )
+        )}
+      </span>
+    );
+  };
+  const handleToggle=(t)=> {
+    if(t==1){
+      setreadRoute(true);
+    }
+    else if(t==2){
+      setreadRoute(false);
+    }
+ }
   const fetchGroups = async () => {
     try {
       const res = await axios.get(`http://localhost:5000/group/get-groups/${userId}`);
@@ -71,19 +108,18 @@ const LeftGroup = ({ userId }) => {
   useEffect(()=>{
     const lastMessageOfAllGroups = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/group/getLastMessage')
+        const res = await axios.get(`http://localhost:5000/group/getLastMessage/${userId}`);
         const lastMessageMap = res.data.reduce((acc, group) => {
-          // console.log(group._id, group)
-          acc[group._id] = group.lastMessage?.text;
-          // acc[group.sender]=group?.lastMessage?.sender
+          acc[group._id] = {
+            lastMessage: group.lastMessage,
+            // unreadCount: group.unreadCount,
+          };
           return acc;
         }, {});
-        // console.log(lastMessage)
+        console.log(lastMessageMap);
         setlastMessage(lastMessageMap);
-        // console.log(lastMessage)
-      }
-      catch (error) {
-        console.log(error)
+      } catch (error) {
+        console.error("Error fetching last messages:", error);
       }
     }
     lastMessageOfAllGroups();
@@ -132,22 +168,54 @@ const LeftGroup = ({ userId }) => {
       <div style={{ padding: '20px' ,backgroundImage: `url(${wallpaper})`, backgroundSize: 'cover'}} className='
     shadow-2xl shadow-green-400 rounded-lg min-w-[300px] mr-[100px] flex flex-col border h-full border-black bg-white'>
         <Toaster />
-        <h2 className='font-bold'>Your Groups</h2>
-        <ul>
-          {groups.map(group => (
-            <li key={group._id} className='border border-black p-2 mt-4 bg-white flex flex-col gap-1' onClick={() =>
+        <div className="search-container flex flex-col gap-1 justify-around">
+          <div className='flex gap-2 justify-around'>
+        <button className='bg-green-300 text-green-600 rounded-full p-1' onClick={()=>{handleToggle(1)}}>CHATS</button>
+        <button className='bg-green-300 text-green-600 rounded-full p-1'onClick={()=>{handleToggle(2)}} >UNREAD</button>
+       </div> 
+  <input
+    type="text"
+    placeholder='Search...'
+    value={searchQuery}
+    onChange={(e) => handleSearch(e.target.value)}
+    className="search-input border border-black rounded-full mb-1 p-2 w-full"
+  />
+</div>
+        <ul className='border border-black p-2 mt-1 '>
+          {groups.filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()))?.map(group => (
+            <li key={group._id} className='shadow-2xl border border-black p-2 mt-3 bg-white flex flex-col' onClick={() =>
               setClickedGroupId(group._id)}>
-             <p> {group.name}</p>
-       <p> {  decryptMessage(lastMessage?.[group._id], GROUP_CHAT_SECRET_KEY) || 
+      <div className='flex gap-3'>
+                <img src={group.groupIcon? group.groupIcon : 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} width={50} height={20} alt="" />
+             <p> {highlightQuery(group.name, searchQuery)}</p>
+      </div>
+     <div className='flex gap-1 justify-around'>
+       {/* <span>
+        {lastMessage?.[group._id]?.status?.every(status => status.state === 'read') ? (
+          <img src={bluetick} width={30} height={10} alt="Read by all" />
+        ) : lastMessage?.[group._id]?.status?.every(status => status.state === 'delivered' || status.state === 'read') ? (
+          <img src={normaltick} width={30} height={10} alt="Delivered to all" />
+        ) : (
+          <span>✔</span>
+        )}
+       </span> */}
+       <p> {  decryptMessage(lastMessage?.[group._id]?.lastMessage?.text, GROUP_CHAT_SECRET_KEY)?.length >10 ? decryptMessage(lastMessage?.[group._id]?.lastMessage?.text, GROUP_CHAT_SECRET_KEY)?.slice(0, 10) + '...' : 
   decryptMessage(messages?.[messages.length - 1]?.text, GROUP_CHAT_SECRET_KEY) || 
   'No message yet...' }</p>
-  {/* {console.log(lastMessage)} */}
+     <p className='bg-green-500 rounded-full w-[25px]'>{
+        //  lastMessage?.[group._id]?.unreadCount
+         
+        }</p>
+
+  </div> 
+  {console.log(lastMessage)}
             </li>
           ))}
         </ul>
-        <div className='mt-5 border border-gray-400'>
-          YOUR MESSAGES ARE END TO END ENCRYTPED
-        </div>
+        <div className='flex gap-2'>
+          <img src={encryption} height={30} width={80} alt="" />
+          <p className="italic text-gray-600 font-extrabold   mt-5">YOUR MESSAGES ARE END TO END ENCRYPTED</p>
+          </div> 
         <Trending clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId} />
         <Button
           variant="contained"
