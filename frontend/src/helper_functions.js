@@ -22,13 +22,8 @@ export  function decryptMessage(encryptedMessage, secretKey) {
  
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-const prompt = "what is the meaning of life?";
-
-const result = await model.generateContent(prompt);
 const summarize=async(prompt)=>{
     const res=await model.generateContent(prompt);
     return res.response.text();
 }
 export default summarize
-// console.log(result.response.text());

@@ -5,7 +5,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
-
+service-key.json
 # Ignore log files
 npm-debug.log*
 yarn-debug.log*

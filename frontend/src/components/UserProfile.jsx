@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { useAuthContext } from '../context/AuthContext';
-import {storage } from '../../../backend/utils/FireBase';
+// import {storage } from '../../../backend/utils/FireBase';
 import toast from 'react-hot-toast';
 import user_empty from '../assets/user_empty.png';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -9,6 +9,8 @@ import Switch from '@mui/material/Switch';
 import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
+import { storage } from '../../FireBase';
+// import { ref } from 'firebase/storage';
 const UserProfile = () => {
   const { Authuser ,setAuthuser} = useAuthContext();
  const {socket}=useContext(SocketContext);
