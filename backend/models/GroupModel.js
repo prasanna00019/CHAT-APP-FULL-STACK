@@ -2,44 +2,44 @@ import mongoose from "mongoose";
 const groupSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true, 
+    required: true,
     unique: true,
   },
   conversationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Conversation', 
+    ref: 'Conversation',
     required: true,
   },
   description: {
     type: String,
-    default: "", 
+    default: "",
   },
   participants: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', 
+    ref: 'User',
     required: true,
   }],
   admins: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', 
+    ref: 'User',
     required: true,
   }],
   createdAt: {
     type: Date,
-    default: Date.now, 
+    default: Date.now,
     immutable: true,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true, 
+    required: true,
   },
   lastMessage: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'GroupMessage',
   },
   groupIcon: {
-    type: String, 
+    type: String,
     default: "",
   },
 });

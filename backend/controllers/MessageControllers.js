@@ -7,7 +7,7 @@ import { io } from "../server.js";
 // Function to send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { message,replyTo,media,type } = req.body; 
+    const { message, replyTo, media, type } = req.body;
     const receiverId = req.params.toId;
     const senderId = req.params.fromId;
     // Check if the receiver is online
@@ -18,8 +18,8 @@ export const sendMessage = async (req, res) => {
       participants: { $all: [senderId, receiverId], $size: 2 },
       isGroup: false
     });
-    
-   console.log(conversation);
+
+    console.log(conversation);
     // If no conversation exists, create a new one
     if (!conversation) {
       conversation = new Conversation({
@@ -37,10 +37,10 @@ export const sendMessage = async (req, res) => {
       text: message,
       sentAt: Date.now(),
       editedAt: null,
-      reply:replyTo ,
+      reply: replyTo,
       type: type,
       deletedForEveryone: false,
-      media:media,
+      media: media,
       deletedFor: [],
       reactions: [],
       status: {
@@ -64,7 +64,7 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
   }
 };
-export const getStarredMessages=async(req,res)=>{
+export const getStarredMessages = async (req, res) => {
   try {
     const { fromId, toId } = req.params;
     const conversation = await Conversation.findOne({
@@ -97,8 +97,8 @@ export const getMessages = async (req, res) => {
     // Query for the conversation between the two users
     const conversation = await Conversation.findOne({
       // participants: { $all: [senderId, userToChatId] }
-        participants: { $all: [senderId, userToChatId], $size: 2 },
-        isGroup: false      
+      participants: { $all: [senderId, userToChatId], $size: 2 },
+      isGroup: false
     });
     // If no conversation exists, return an empty array
     if (!conversation) {
@@ -108,7 +108,7 @@ export const getMessages = async (req, res) => {
 
     // Retrieve messages by their IDs stored in the conversation
     const messages = await Message.find({ _id: { $in: conversation.messages } });
-    
+
     // If no messages are found, return an empty array
     if (messages.length === 0) {
       console.log("No messages found in this conversation.");
@@ -131,11 +131,11 @@ export const deleteMessageForEveryone = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-     if (!message.deletedForEveryone && decryptMessage(message.text,secretKey)==='DELETED FOR EVERYONE' 
-     && message.flaggedForDeletion) {
+    if (!message.deletedForEveryone && decryptMessage(message.text, secretKey) === 'DELETED FOR EVERYONE'
+      && message.flaggedForDeletion) {
       // If the message is already marked as deleted for everyone, remove it from the database
-      const m=await Message.findById(messageId);
-      m.deletedForEveryone=true;
+      const m = await Message.findById(messageId);
+      m.deletedForEveryone = true;
       await Message.findByIdAndDelete(messageId);
       // Find the conversation that contains this message
       const conversation = await Conversation.findOne({ messages: messageId });
@@ -147,9 +147,9 @@ export const deleteMessageForEveryone = async (req, res) => {
       res.status(200).json(m);
     }
     else {
-      message.text = encryptMessage('DELETED FOR EVERYONE',secretKey);
+      message.text = encryptMessage('DELETED FOR EVERYONE', secretKey);
       // message.deletedForEveryone = false;
-      message.flaggedForDeletion=true;
+      message.flaggedForDeletion = true;
       await message.save();
       res.status(200).json(message);
       return;
@@ -182,21 +182,21 @@ export const deleteMessageForEveryone = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-export const getMessageById=async(req,res)=>{
+export const getMessageById = async (req, res) => {
   const { messageId } = req.params; // Extract message ID from request parameters
-try {
-  const message = await Message.findById(messageId) // Populate sender, receivers, and reply fields if needed
-  if (!message) {
-    return res.status(404).json({ message: 'Message not found' });
+  try {
+    const message = await Message.findById(messageId) // Populate sender, receivers, and reply fields if needed
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    res.status(200).json(message); // Respond with the message data
+  } catch (error) {
+    console.error('Error fetching message:', error);
+    res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
   }
-  res.status(200).json(message); // Respond with the message data
-} catch (error) {
-  console.error('Error fetching message:', error);
-  res.status(500).json({ error: 'INTERNAL SERVER ERROR' });
-}
 }
 export const deleteMessageForMe = async (req, res) => {
-  const { messageId } = req.params; 
+  const { messageId } = req.params;
   const { userId } = req.params;
 
   try {
@@ -216,14 +216,14 @@ export const editMessage = async (req, res) => {
     const { messageId } = req.params;
     const { editedText } = req.body; // Updated message text
     // console.log(editedText, ' from server.js ... ')
-  //  console.log(editedText);
+    //  console.log(editedText);
     // Update the message's text and the editedAt timestamp
     await Message.findByIdAndUpdate(messageId, {
-      text:encryptMessage( editedText,secretKey),
+      text: encryptMessage(editedText, secretKey),
       editedAt: new Date() // Record the time of edit
     }, { new: true }); // Return the updated document
-    const message= await Message.findById(messageId); 
-    res.status(200).json( message);
+    const message = await Message.findById(messageId);
+    res.status(200).json(message);
   } catch (error) {
     console.error('Error updating message:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -388,7 +388,7 @@ export const getLastMessage = async (req, res) => {
         // Sort messages by createdAt descending to get the latest message
         const lastMessage = await Message.findOne({ _id: { $in: conversation.messages }, deletedFor: { $ne: authUserId } })
           .sort({ sentAt: -1 }); // Get the most recent message
-          console.log(lastMessage)
+        console.log(lastMessage)
         // Get the other participant's ID
         const otherParticipant = conversation.participants.find(userId => userId.toString() !== authUserId);
         const unreadCount = await Message.countDocuments({
@@ -396,7 +396,7 @@ export const getLastMessage = async (req, res) => {
           "status.state": { $ne: "read" }, // Use dot notation for nested fields
           sender: otherParticipant,
         });
-  
+
         return {
           conversationId: conversation._id,
           otherParticipant,
@@ -420,12 +420,12 @@ export const getLastMessage = async (req, res) => {
     res.json(conversationsWithLastMessage);
   } catch (error) {
     console.error('Error getting last messages of all conversations:', error);
-    res.status(500).json({error: error.message});
+    res.status(500).json({ error: error.message });
   }
 };
 
 // When the user comes online
- export const  changeMessageStatusToDelivered = async (req, res) => {
+export const changeMessageStatusToDelivered = async (req, res) => {
   try {
     const { userId } = req.params; // Get the userId from the route parameter
 
@@ -459,7 +459,7 @@ export const getLastMessage = async (req, res) => {
       'status.state': 'delivered',
     });
     res.status(200).json({ message: result.modifiedCount });
-     io.emit('updateMessagesZEN', updatedMessages);
+    io.emit('updateMessagesZEN', updatedMessages);
   } catch (error) {
     console.error("Error in updating message status when user comes online:", error.message);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
@@ -486,7 +486,7 @@ export const markMessageAsRead = async (req, res) => {
     if (!result) {
       return res.status(200).json({ message: 'N/A' });
     }
-    res.status(200).json({message:result});
+    res.status(200).json({ message: result });
   } catch (error) {
     console.error("Error in marking message as read:", error.message);
     res.status(500).json({ error: "INTERNAL SERVER ERROR" });
@@ -576,15 +576,15 @@ export const searchMessages = async (req, res) => {
       }
     ]);
     const matchingMessages = messages.filter((message) => {
-            try {
-              const decryptedText = decryptMessage(message.text, secretKey);
-              message.text=decryptedText;
-              return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
-            } catch (error) {
-              console.error('Error decrypting message:', error);
-              return false; // Skip messages that cannot be decrypted
-            }
-          });
+      try {
+        const decryptedText = decryptMessage(message.text, secretKey);
+        message.text = decryptedText;
+        return decryptedText.toLowerCase().includes(searchTerm.toLowerCase());
+      } catch (error) {
+        console.error('Error decrypting message:', error);
+        return false; // Skip messages that cannot be decrypted
+      }
+    });
     res.status(200).json(matchingMessages);
   } catch (error) {
     console.error("Error searching messages:", error);

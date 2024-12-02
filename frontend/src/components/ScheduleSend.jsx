@@ -12,7 +12,7 @@ const ScheduleSend = ({ setDelay }) => {
     let delayInMs = parseInt(delayValue) || 0;
     if (delayUnit === 'minutes') delayInMs *= 60 * 1000;
     else if (delayUnit === 'hours') delayInMs *= 60 * 60 * 1000;
-    return delayInMs *1000;
+    return delayInMs * 1000;
   };
 
   const handleSchedule = () => {

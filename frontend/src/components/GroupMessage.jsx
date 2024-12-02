@@ -26,7 +26,7 @@ import FormControl from '@mui/material/FormControl';
 import TextField from '@mui/material/TextField'; // For editing message text
 import reply from '../assets/reply.png'
 import reaction from '../assets/reaction (1).png'
-import { IconButton, Modal} from '@mui/material';
+import { IconButton, Modal } from '@mui/material';
 import { useAuthContext } from '../context/AuthContext';
 import { decryptMessage, encryptMessage } from '../helper_functions';
 import CloseIcon from '@mui/icons-material/Close';
@@ -34,17 +34,17 @@ import useLogout from '../hooks/useLogout';
 import Poll from './Poll';
 import ForwardMessageGroup from './ForwardMessageGroup';
 import { toast } from 'react-toastify';
-const GroupMessage =forwardRef((props,ref) => {
-const  { message, messages, setMessages, userId,setReplyingTo,replyingTo,messageRefs,
-  setShowMessageInfo,showMessageInfo, dataMessageId, showAI, setShowAI,
-  dataMessageSender ,groups
-}=props;
-const {GROUP_CHAT_SECRET_KEY}=useLogout();
+const GroupMessage = forwardRef((props, ref) => {
+  const { message, messages, setMessages, userId, setReplyingTo, replyingTo, messageRefs,
+    setShowMessageInfo, showMessageInfo, dataMessageId, showAI, setShowAI,
+    dataMessageSender, groups
+  } = props;
+  const { GROUP_CHAT_SECRET_KEY } = useLogout();
   const { socket } = useContext(SocketContext);
-  const {userMap}=useAuthContext();
+  const { userMap } = useAuthContext();
   const [showForwardModal, setShowForwardModal] = useState(false);
   const openForwardModal = () => setShowForwardModal(true);
-  const closeForwardModal=() => setShowForwardModal(false);
+  const closeForwardModal = () => setShowForwardModal(false);
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinDuration, setPinDuration] = useState(''); // e.g., "24 hours", "7 days"
   const [currentMessage, setCurrentMessage] = useState(message);
@@ -55,7 +55,7 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const [currentUser, setCurrentUser] = useState(null);
   const [openReaction, setOpenReaction] = useState(false);
   // Open and close modals handlers
-  const handlePinClick = () =>setIsPinDialogOpen(true);
+  const handlePinClick = () => setIsPinDialogOpen(true);
   const handleCloseDialog = () => setIsPinDialogOpen(false);
   const handleDurationChange = (event) => setPinDuration(event.target.value);
   const openDeleteModal = () => setShowModal(true);
@@ -70,35 +70,35 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     setOpen(false);
   };
   const handlePinMessage = async (status) => {
-   if(!status){
-    let expirationTime;
-    const now = new Date();
-   switch (pinDuration) {
-      case '24 hours':
-        expirationTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        break;
-      case '7 days':
-        expirationTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30 days':
-        expirationTime = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        return;
-    }
+    if (!status) {
+      let expirationTime;
+      const now = new Date();
+      switch (pinDuration) {
+        case '24 hours':
+          expirationTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          break;
+        case '7 days':
+          expirationTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30 days':
+          expirationTime = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          return;
+      }
 
-    // Update pinned status in the database
-    socket.emit('pinMessageGroup', message._id, {
-      isPinned: true,
-     expiration: expirationTime,
-    },message.group);
-  }
-  else{
-    socket.emit('pinMessageGroup', message._id, {
-      isPinned: false,
-     expiration: null,
-    },message.group);
-  }
+      // Update pinned status in the database
+      socket.emit('pinMessageGroup', message._id, {
+        isPinned: true,
+        expiration: expirationTime,
+      }, message.group);
+    }
+    else {
+      socket.emit('pinMessageGroup', message._id, {
+        isPinned: false,
+        expiration: null,
+      }, message.group);
+    }
     // Close the dialog after pinning
     setIsPinDialogOpen(false);
   };
@@ -109,24 +109,24 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
   const scrollToMessage = (messageId) => {
     // Find the index of the message with the given messageId
     const index = messages.findIndex((msg) => msg._id === messageId);
-    
+
     // If the index is found and a corresponding reference exists
     if (index !== -1 && messageRefs.current[index]) {
       messageRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-  
+
       // Optionally, add a visual highlight to indicate focus
       messageRefs.current[index].classList.add('highlight');
       setTimeout(() => {
         messageRefs.current[index].classList.remove('highlight');
       }, 2000); // Remove the highlight after 2 seconds
     }
-  };  
+  };
   const renderReply = (replyId) => {
     const originalMessage = messages.find((msg) => msg._id === replyId);
     const sender = originalMessage?.sender;
     return originalMessage ? (
-      <div onClick={()=>scrollToMessage(replyId)} className="reply-content border border-black rounded-lg  border-x-green-600 border-x-8 bg-white">
-        <blockquote>{sender === userId ? 'YOU':userMap[sender]}:{decryptMessage(originalMessage.text,GROUP_CHAT_SECRET_KEY)}</blockquote>
+      <div onClick={() => scrollToMessage(replyId)} className="reply-content border border-black rounded-lg  border-x-green-600 border-x-8 bg-white">
+        <blockquote>{sender === userId ? 'YOU' : userMap[sender]}:{decryptMessage(originalMessage.text, GROUP_CHAT_SECRET_KEY)}</blockquote>
       </div>
     ) : (
       <div className="reply-content">
@@ -135,7 +135,7 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     );
   };
   const openEditModal = () => {
-    setEditText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)); // Set the current message text in the input field
+    setEditText(decryptMessage(currentMessage.text, GROUP_CHAT_SECRET_KEY)); // Set the current message text in the input field
     setShowEditModal(true);
   };
   const closeEditModal = () => setShowEditModal(false);
@@ -179,7 +179,7 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     if (!str) return 0; // Handle empty or null strings
     return str.trim().split(/\s+/).length;
   }
-  
+
   const handleDelete = async () => {
     try {
       if (deleteOption === 'forMe') {
@@ -188,20 +188,20 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
           console.log('Undo delete!');
         });
         const index = messages.findIndex((msg) => msg._id === message._id);
-        socket.emit('deleteForMe', message._id, message.group,index);
+        socket.emit('deleteForMe', message._id, message.group, index);
         // setMessages(prevMessages => prevMessages.filter(msg => msg._id !== message._id));
       } else if (deleteOption === 'forEveryone') {
-        socket.emit('deleteForEveryone', message._id, message.group,message.text);
+        socket.emit('deleteForEveryone', message._id, message.group, message.text);
       }
       setShowModal(false); // Close the modal after deletion
     } catch (error) {
       console.error('Error deleting message:', error);
     }
   };
-  const toggleMessageInfo=(messageId)=>{
+  const toggleMessageInfo = (messageId) => {
     setShowMessageInfo(showMessageInfo === messageId ? null : messageId);
   }
-  const toggleSummarizeInfo=(messageId)=>{
+  const toggleSummarizeInfo = (messageId) => {
     setShowAI(showAI === messageId ? null : messageId);
     // console.log(showAI);
   }
@@ -217,178 +217,179 @@ const {GROUP_CHAT_SECRET_KEY}=useLogout();
     if (message) {
       fetchMessage(message._id);
     }
-  }, [message.text,socket,message.flaggedForDeletion]);
-  useEffect(()=>{
-   socket.on('MarkReadGroup',(data)=>{
-    console.log(data,' from group UI read');
-   if(data){ 
-    setMessages((prevMessages) => 
-      prevMessages.map((message) => 
-        message._id === data._id ? data : message
-      )
-    );
-  }
-  }) 
-   socket.on('messageStarredGroup',(user)=>{
-    setCurrentUser(user);
-  })  
-return ()=>{
-  socket.off('messageStarredGroup')
-  socket.off('MarkReadGroup');
-}
-  },[socket])
-  const handleEmojiSubmit=(emoji,messageId,userId,groupId)=>{
-    socket.emit('AddReactionGroup',{emoji,messageId,userId,groupId});
+  }, [message.text, socket, message.flaggedForDeletion]);
+  useEffect(() => {
+    socket.on('MarkReadGroup', (data) => {
+      console.log(data, ' from group UI read');
+      if (data) {
+        setMessages((prevMessages) =>
+          prevMessages.map((message) =>
+            message._id === data._id ? data : message
+          )
+        );
+      }
+    })
+    socket.on('messageStarredGroup', (user) => {
+      setCurrentUser(user);
+    })
+    return () => {
+      socket.off('messageStarredGroup')
+      socket.off('MarkReadGroup');
+    }
+  }, [socket])
+  const handleEmojiSubmit = (emoji, messageId, userId, groupId) => {
+    socket.emit('AddReactionGroup', { emoji, messageId, userId, groupId });
   }
   const emojiList = ["😊", "😂", "😍", "❤", "✨", "😇", "👏", "💛", "🥹", "😞", "🫶", "💥", "👍"];
   return (
     <>
-              <img src={forward} height={20} width={20} alt="" onClick={openForwardModal}/>
+      <img src={forward} height={20} width={20} alt="" onClick={openForwardModal} />
       {
         !message.deletedFor.includes(userId) &&
         <div ref={ref}
-        data-message-id={dataMessageId}
-        data-message-sender={dataMessageSender} 
-        className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]` }
+          data-message-id={dataMessageId}
+          data-message-sender={dataMessageSender}
+          className={`${message.sender === userId ? 'ml-[270px]' : 'mr-[200px]'} mb-3 border border-black bg-zinc-200 w-[60%]`}
         >
-                                                     {currentMessage.reply && renderReply(currentMessage.reply)}
-                                                  
+          {currentMessage.reply && renderReply(currentMessage.reply)}
+
           {/* {currentMessage.media && <img src={currentMessage.media} width={200} height={50} onClick={handleClickOpenImage}/>}  */}
           <Dialog open={open} onClose={handleClose} maxWidth="lg">
-  <DialogActions>
-    <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
-      <CloseIcon />
-    </IconButton>
-  </DialogActions>
-  <DialogContent>
-    {currentMessage.media.includes('.pdf') ? (
-      <iframe 
-        src={currentMessage.media}
-        title="PDF Viewer"
-        style={{ width: '1000px', height: '500px', border: 'none' }}
-      ></iframe>
-    ) : (
-      currentMessage.media.includes('.mp4') ? (
-        <video controls>
-          <source src={currentMessage.media} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      ):
-      currentMessage.media.includes('.mp3') ? (
-        <audio controls>
-          <source src={currentMessage.media} type="audio/mpeg" />
-          Your browser does not support the audio tag.
-        </audio>
-      ):
-      <img
-        src={currentMessage.media}
-        alt="Large View"
-        style={{ width: '100%', height: 'auto' }}
-      />
-    )}
-  </DialogContent>
-</Dialog>
-          <p className={`${message.flaggedForDeletion?'italic':''} ${message.flaggedForDeletion && 'text-gray-600 text-2xl'}` }
+            <DialogActions>
+              <IconButton onClick={handleCloseImage} style={{ marginLeft: 'auto' }}>
+                <CloseIcon />
+              </IconButton>
+            </DialogActions>
+            <DialogContent>
+              {currentMessage.media.includes('.pdf') ? (
+                <iframe
+                  src={currentMessage.media}
+                  title="PDF Viewer"
+                  style={{ width: '1000px', height: '500px', border: 'none' }}
+                ></iframe>
+              ) : (
+                currentMessage.media.includes('.mp4') ? (
+                  <video controls>
+                    <source src={currentMessage.media} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                ) :
+                  currentMessage.media.includes('.mp3') ? (
+                    <audio controls>
+                      <source src={currentMessage.media} type="audio/mpeg" />
+                      Your browser does not support the audio tag.
+                    </audio>
+                  ) :
+                    <img
+                      src={currentMessage.media}
+                      alt="Large View"
+                      style={{ width: '100%', height: 'auto' }}
+                    />
+              )}
+            </DialogContent>
+          </Dialog>
+          <p className={`${message.flaggedForDeletion ? 'italic' : ''} ${message.flaggedForDeletion && 'text-gray-600 text-2xl'}`}
           >
-             {!message.flaggedForDeletion &&  <div onClick={handleClickOpenImage}>
-       {currentMessage.media.includes('.pdf') ? <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'>PDF</button> :
-      currentMessage.media.includes('.mp4') ? <video src={currentMessage.media} width={400} controls></video> :  
-      currentMessage.media.includes('.mp3') ? <audio src={currentMessage.media} controls></audio> :
-      currentMessage.media.includes('png') || currentMessage.media.includes('jpg') || currentMessage.media.includes('jpeg') 
-      || currentMessage.media.includes('gif') || currentMessage.media.includes('svg') || currentMessage.media.includes('webp')
-      || currentMessage.media.includes('avif')  ? <img src={message.media} width={200} height={50} onClick={handleClickOpenImage} />:
-      ""}
-     </div>}
-            {currentMessage.sender===userId?"YOU ": userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY)}</p>
-       {/* {console.log(message.status)} */}
-   
-{     !message.flaggedForDeletion &&   
-   <img src={reply} width={20} alt="" onClick={()=>{handleReplyClick(message._id)}}/>
-}          {/* <span>{tickIcon}</span> */}
-          {!message.flaggedForDeletion &&  message.sender === userId ? (
-  (() => {
-    // Check if all users have read the message
-    const allRead = message.status.every(status => status.state === 'read');
-    
-    // Check if all users have at least delivered the message
-    const allDelivered = message.status.every(status => status.state === 'delivered' || status.state === 'read');
+            {!message.flaggedForDeletion && <div onClick={handleClickOpenImage}>
+              {currentMessage.media.includes('.pdf') ? <button className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded'>PDF</button> :
+                currentMessage.media.includes('.mp4') ? <video src={currentMessage.media} width={400} controls></video> :
+                  currentMessage.media.includes('.mp3') ? <audio src={currentMessage.media} controls></audio> :
+                    currentMessage.media.includes('png') || currentMessage.media.includes('jpg') || currentMessage.media.includes('jpeg')
+                      || currentMessage.media.includes('gif') || currentMessage.media.includes('svg') || currentMessage.media.includes('webp')
+                      || currentMessage.media.includes('avif') ? <img src={message.media} width={200} height={50} onClick={handleClickOpenImage} /> :
+                      ""}
+            </div>}
+            {currentMessage.sender === userId ? "YOU " : userMap[currentMessage.sender]}:{decryptMessage(currentMessage.text, GROUP_CHAT_SECRET_KEY)}</p>
+          {/* {console.log(message.status)} */}
 
-    if (allRead) {
-      // Show blue double tick if everyone has read
-      return <span><img src={bluetick} width={30} height={10} alt="Read by all" /></span>;
-    } else if (allDelivered) {
-      // Show normal double tick if everyone has delivered, but not necessarily read
-      return <span><img src={normaltick} width={30} height={10} alt="Delivered to all" /></span>;
-    } else {
-      // Show single tick if not everyone has delivered
-      return <span>✔</span>;
-    }
-  })()
-) : null}
-<div className='flex gap-3 justify-between'>
-{message.flaggedForDeletion && <img src={ban} className='ml-2 ' width={30} height={20} alt="" /> }
-{message.flaggedForDeletion && <img className='hover:cursor-pointer'  onClick={() =>{socket.emit('deleteForEveryone', message._id, message.group,message.text);}} src={dustbin} width={30} height={5} alt="" />
-}
-</div>
-          { (
+          {!message.flaggedForDeletion &&
+            <img src={reply} width={20} alt="" onClick={() => { handleReplyClick(message._id) }} />
+          }          {/* <span>{tickIcon}</span> */}
+          {!message.flaggedForDeletion && message.sender === userId ? (
+            (() => {
+              // Check if all users have read the message
+              const allRead = message.status.every(status => status.state === 'read');
+
+              // Check if all users have at least delivered the message
+              const allDelivered = message.status.every(status => status.state === 'delivered' || status.state === 'read');
+
+              if (allRead) {
+                // Show blue double tick if everyone has read
+                return <span><img src={bluetick} width={30} height={10} alt="Read by all" /></span>;
+              } else if (allDelivered) {
+                // Show normal double tick if everyone has delivered, but not necessarily read
+                return <span><img src={normaltick} width={30} height={10} alt="Delivered to all" /></span>;
+              } else {
+                // Show single tick if not everyone has delivered
+                return <span>✔</span>;
+              }
+            })()
+          ) : null}
+          <div className='flex gap-3 justify-between'>
+            {message.flaggedForDeletion && <img src={ban} className='ml-2 ' width={30} height={20} alt="" />}
+            {message.flaggedForDeletion && <img className='hover:cursor-pointer' onClick={() => { socket.emit('deleteForEveryone', message._id, message.group, message.text); }} src={dustbin} width={30} height={5} alt="" />
+            }
+          </div>
+          {(
             <>
-             { !message.flaggedForDeletion && <Button variant="contained" color="secondary" onClick={openDeleteModal}>
+              {!message.flaggedForDeletion && <Button variant="contained" color="secondary" onClick={openDeleteModal}>
                 DELETE
               </Button>}
-              {!message.flaggedForDeletion &&  message.sender ===userId && <Button style={{marginLeft:'10px'}} onClick={openEditModal} variant="contained" color="primary">
+              {!message.flaggedForDeletion && message.sender === userId && <Button style={{ marginLeft: '10px' }} onClick={openEditModal} variant="contained" color="primary">
                 EDIT
               </Button>}
             </>
           )}
-      { !message.flaggedForDeletion && <button className='mr-3' onClick={()=>{window.navigator.clipboard.writeText(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY));}}>
-          <img src={copy} width={20} height={20} className='ml-1' alt="" />
-        </button>}
-         { !message.flaggedForDeletion && <Button onClick={handlePinClick}>
-            { message.pinned.isPinned ? <img src={pin} width={20} height={20} alt="" /> : <img src={unpin} width={20} height={20} alt="" /> }
-           </Button>}
-        {!message.flaggedForDeletion &&  <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id,userId)}>
-            {currentUser?.starredMessages?.includes(message._id) ? <img src={star} width={20} height={20} alt="" />: <img src={unstar} width={20} height={20} alt="" />}
+          {!message.flaggedForDeletion && <button className='mr-3' onClick={() => { window.navigator.clipboard.writeText(decryptMessage(currentMessage.text, GROUP_CHAT_SECRET_KEY)); }}>
+            <img src={copy} width={20} height={20} className='ml-1' alt="" />
           </button>}
-{     !message.flaggedForDeletion &&
-     <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
-}          {
+          {!message.flaggedForDeletion && <Button onClick={handlePinClick}>
+            {message.pinned.isPinned ? <img src={pin} width={20} height={20} alt="" /> : <img src={unpin} width={20} height={20} alt="" />}
+          </Button>}
+          {!message.flaggedForDeletion && <button className="ml-5" onClick={() => socket.emit('starMessageGroup', message._id, userId)}>
+            {currentUser?.starredMessages?.includes(message._id) ? <img src={star} width={20} height={20} alt="" /> : <img src={unstar} width={20} height={20} alt="" />}
+          </button>}
+          {!message.flaggedForDeletion &&
+            <img className='ml-2' src={reaction} width={25} alt="" onClick={handleClickOpen} style={{ cursor: 'pointer' }} />
+          }          {
             message?.reactions?.map(reaction => (
-           <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
-                ))
-           }
+              <span key={reaction.userId} className='ml-5 text-2xl'>{reaction.r}</span> // Render the reaction
+            ))
+          }
           <div className='flex justify-around'>
-           <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
-           {countWords(decryptMessage(currentMessage.text,GROUP_CHAT_SECRET_KEY))>3 && <img 
-           onClick={()=>{toggleSummarizeInfo(message._id)}} src={ai} width={20} alt="" /> }
+            <p>{new Date(currentMessage.sentAt).toLocaleString()}</p>
+            {countWords(decryptMessage(currentMessage.text, GROUP_CHAT_SECRET_KEY)) > 3 && <img
+              onClick={() => { toggleSummarizeInfo(message._id) }} src={ai} width={20} alt="" />}
           </div>
 
-           {message.editedAt!==null && <div className='italic text-gray-600'>EDITED</div> }
-           {!message.flaggedForDeletion &&
-            message.sender===userId && 
-          <img className='hover:cursor-pointer' src={info} width={30} onClick={()=>{toggleMessageInfo(message._id);
-            scrollToMessage(message._id)
-          }} alt="" />
-          
-                        }              
-           <Dialog open={openReaction} onClose={handleClose}>
-      <DialogTitle>Select an Emoji Reaction</DialogTitle>
-      <DialogContent>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px' }}>
-          {emojiList.map((emoji) => (
-            <span className='w-5'
-              key={emoji}
-              onClick={() => {
-                // console.log(emoji,message._id,userId,'clicked')
-                 handleEmojiSubmit(emoji,message._id,userId,message.group);
-                 handleClose()
-              }}
-            >
-              {emoji}
-            </span>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+          {message.editedAt !== null && <div className='italic text-gray-600'>EDITED</div>}
+          {!message.flaggedForDeletion &&
+            message.sender === userId &&
+            <img className='hover:cursor-pointer' src={info} width={30} onClick={() => {
+              toggleMessageInfo(message._id);
+              scrollToMessage(message._id)
+            }} alt="" />
+
+          }
+          <Dialog open={openReaction} onClose={handleClose}>
+            <DialogTitle>Select an Emoji Reaction</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', padding: '10px' }}>
+                {emojiList.map((emoji) => (
+                  <span className='w-5'
+                    key={emoji}
+                    onClick={() => {
+                      // console.log(emoji,message._id,userId,'clicked')
+                      handleEmojiSubmit(emoji, message._id, userId, message.group);
+                      handleClose()
+                    }}
+                  >
+                    {emoji}
+                  </span>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
           {/* Delete Modal */}
           <Dialog open={showModal} onClose={closeDeleteModal}>
             <DialogTitle>Delete message?</DialogTitle>
@@ -399,8 +400,8 @@ return ()=>{
               <FormControl component="fieldset">
                 <RadioGroup value={deleteOption} onChange={(e) => setDeleteOption(e.target.value)}>
                   <FormControlLabel value="forMe" control={<Radio />} label="Delete for me" />
-                     { currentMessage.sender===userId && 
-                  <FormControlLabel value="forEveryone" control={<Radio />} label="Delete for everyone" />}
+                  {currentMessage.sender === userId &&
+                    <FormControlLabel value="forEveryone" control={<Radio />} label="Delete for everyone" />}
                 </RadioGroup>
               </FormControl>
             </DialogContent>
@@ -414,24 +415,24 @@ return ()=>{
             </DialogActions>
           </Dialog>
           <Modal open={isPinDialogOpen} onClose={handleCloseDialog}>
-        { !message.pinned.isPinned ?
-        <div style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
-          <h3>Choose how long your pin lasts</h3>
-          <RadioGroup value={pinDuration} onChange={handleDurationChange}>
-            <FormControlLabel value="24 hours" control={<Radio />} label="24 hours" />
-            <FormControlLabel value="7 days" control={<Radio />} label="7 days" />
-            <FormControlLabel value="30 days" control={<Radio />} label="30 days" />
-          </RadioGroup>
-          <Button onClick={()=>{handlePinMessage(message.pinned.isPinned)}} color="primary">{message.pinned.isPinned ? 'UNPIN' : 'PIN'}</Button>
-          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
-        </div>:
-          <div className='flex flex-col items-center justify-center' style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
-          <Button onClick={()=>{handlePinMessage(message.pinned.isPinned)}} color="primary">{message.pinned.isPinned ? 'UNPIN' : 'PIN'}</Button>
-          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
-          </div>
-        }
-      </Modal>
-      <ForwardMessageGroup open={showForwardModal} handleClose={closeForwardModal} groups={groups} message={message}/>
+            {!message.pinned.isPinned ?
+              <div style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
+                <h3>Choose how long your pin lasts</h3>
+                <RadioGroup value={pinDuration} onChange={handleDurationChange}>
+                  <FormControlLabel value="24 hours" control={<Radio />} label="24 hours" />
+                  <FormControlLabel value="7 days" control={<Radio />} label="7 days" />
+                  <FormControlLabel value="30 days" control={<Radio />} label="30 days" />
+                </RadioGroup>
+                <Button onClick={() => { handlePinMessage(message.pinned.isPinned) }} color="primary">{message.pinned.isPinned ? 'UNPIN' : 'PIN'}</Button>
+                <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
+              </div> :
+              <div className='flex flex-col items-center justify-center' style={{ padding: '20px', backgroundColor: 'white', margin: '100px auto', maxWidth: '400px' }}>
+                <Button onClick={() => { handlePinMessage(message.pinned.isPinned) }} color="primary">{message.pinned.isPinned ? 'UNPIN' : 'PIN'}</Button>
+                <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
+              </div>
+            }
+          </Modal>
+          <ForwardMessageGroup open={showForwardModal} handleClose={closeForwardModal} groups={groups} message={message} />
           {/* Edit Modal */}
           <Dialog open={showEditModal} onClose={closeEditModal}>
             <DialogTitle>Edit Message</DialogTitle>

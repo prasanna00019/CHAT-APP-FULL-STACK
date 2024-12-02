@@ -354,7 +354,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
     socket.on('messageDeletedForMeOnetoOne', (data,index) => {
       // console.log(data,index);
       setMessages2((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
-   messages2.sender===Authuser._id &&   toast.success(
+    toast.success(
         <div>
           <p>DELETED FOR ME</p>
           <button 
@@ -395,7 +395,7 @@ const [isSelectionMode, setIsSelectionMode] = useState(true);
             msg._id === deletedMessage._id ? { ...msg, text: encryptMessage('DELETED FOR EVERYONE',secretKey) ,flaggedForDeletion: true} : msg
           )
         );
-       messages2.sender===Authuser._id &&   toast.success(
+       toast.success(
           <div>
             <p>DELETED FOR EVERYONE</p>
             <button 

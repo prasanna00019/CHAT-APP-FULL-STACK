@@ -6,7 +6,7 @@ import useLogout from '../hooks/useLogout';
 import { useStatusContext } from '../context/StatusContext';
 import TrendingMessages from './TrendingMessages';
 
-const Trending = ({clickedGroupId,setClickedGroupId}) => {
+const Trending = ({ clickedGroupId, setClickedGroupId }) => {
   const [trendingHashtags, setTrendingHashtags] = useState([]);
   const [groupMessages, setGroupMessages] = useState({});
   const { Authuser } = useAuthContext();
@@ -22,7 +22,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
         messages: messages.filter((msg) => msg.message.includes(hashtag)),  // Filter messages by hashtag
       }))
       .filter(({ messages }) => messages.length > 0);  // Remove groups with no matching messages
-  
+
     setSelectedHashtag(hashtag);
     setMessagesWithHashtag(filteredMessages);
   };
@@ -31,7 +31,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
     setSelectedHashtag(null);
     setMessagesWithHashtag([]);
   };
-  
+
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -50,7 +50,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
         }, {});
 
         setGroupMessages(decryptedGroupMessages);
-        
+
         // Flatten decrypted messages for trending analysis
         const allMessages = Object.values(decryptedGroupMessages).flat();
         setTrendingHashtags(getTrendingHashtags(allMessages));
@@ -84,9 +84,9 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
           <li key={hashtag} className='bg-black text-white'>
             <button onClick={() => showMessagesWithHashtag2(hashtag)}>
               <div className='flex flex-col'>
-              <span className=''>{hashtag.toUpperCase()}</span>
-              <span className='text-gray-400'>
-                {count} messages
+                <span className=''>{hashtag.toUpperCase()}</span>
+                <span className='text-gray-400'>
+                  {count} messages
                 </span>
               </div>
             </button>
@@ -95,7 +95,7 @@ const Trending = ({clickedGroupId,setClickedGroupId}) => {
       </ul>
       {selectedHashtag && (
         <TrendingMessages messagesWithHashtag={messagesWithHashtag} onClose={handleClose}
-         selectedHashtag={selectedHashtag}  clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId}
+          selectedHashtag={selectedHashtag} clickedGroupId={clickedGroupId} setClickedGroupId={setClickedGroupId}
         />
       )}
     </div>

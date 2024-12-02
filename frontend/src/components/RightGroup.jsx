@@ -22,20 +22,20 @@ const RightGroup = ({ clickedGroupId, groups, userId, setlastMessage }) => {
   const { socket } = useContext(SocketContext) // Replace with your backend URL
   const storage = getStorage();
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-const [open, setopen] = useState(false);
+  const [open, setopen] = useState(false);
   const [currentGroupInfo, setCurrentGroupInfo] = useState(null);
   const { messages, setMessages } = useStatusContext();
   const typingTimeout = useRef(null);
   const [image, setImage] = useState(null);
-  const{GROUP_CHAT_SECRET_KEY}=useLogout();
+  const { GROUP_CHAT_SECRET_KEY } = useLogout();
   const [showModal, setShowModal] = useState(false); // State for delete modal visibility
   // const messageRefs = useRef([]); // References to message elements
-  const {messageRefs,users}=useAuthContext();
+  const { messageRefs, users } = useAuthContext();
   const [selectedParticipants, setSelectedParticipants] = useState([]);
-  const { userMap,Authuser } = useAuthContext();
+  const { userMap, Authuser } = useAuthContext();
   const [showMessageInfo, setShowMessageInfo] = useState(null);
   const [showAI, setShowAI] = useState(null);
-  const [searchBar,setSearchBar]=useState(false)
+  const [searchBar, setSearchBar] = useState(false)
   const [searchTerm, setSearchTerm] = useState("");
   const [showPinnedMessages, setShowPinnedMessages] = useState(false);
   const [showStarredMessages, setShowStarredMessages] = useState(false);
@@ -48,7 +48,7 @@ const [open, setopen] = useState(false);
   const [loading, setLoading] = useState(true);
   const closeInfoModal = () => setShowModal(false);
   const openInfoModal = () => setShowModal(true);
-  const [delay,setDelay]=useState(0);
+  const [delay, setDelay] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   // const [marginLeft, setMarginLeft] = useState(0);
   const handleClickOpen = () => {
@@ -77,7 +77,7 @@ const [open, setopen] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-  
+
       // If the user is not at the bottom, show the button
       if (scrollHeight - scrollTop > clientHeight + 100) {
         setIsScrolledUp(true);
@@ -85,17 +85,17 @@ const [open, setopen] = useState(false);
         setIsScrolledUp(false);
       }
     };
-  
+
     const chatContainer = chatContainerRef.current;
-    if (chatContainer){
-       chatContainer.addEventListener('scroll', handleScroll);
-    }  
+    if (chatContainer) {
+      chatContainer.addEventListener('scroll', handleScroll);
+    }
     // Cleanup the event listener on component unmount
     return () => {
       if (chatContainer) {
         chatContainer.removeEventListener('scroll', handleScroll);
-    }
-        };
+      }
+    };
   }, [clickedGroupId]);
   const scrollToBottom = () => {
     chatContainerRef.current.scrollTo({
@@ -109,22 +109,22 @@ const [open, setopen] = useState(false);
   useEffect(() => {
 
   }, [])
-  const pinnedResultsDiv=(
+  const pinnedResultsDiv = (
     <div className="pinned-results border border-gray-800 p-2">
-              <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
+      <h1 className='font-bold mb-3'>PINNED MESSAGES</h1>
 
-    {
-      messages?.filter((msg) => msg.pinned.isPinned).map((msg) => (
-        <div key={msg._id} onClick={()=>scrollToMessage(msg._id)} className="pinned-message bg-zinc-100 mb-2">
-          <p>
-            <strong>Sender:</strong> {userMap[msg.sender]} <br />
-            <strong>Text:</strong> {decryptMessage(msg.text, GROUP_CHAT_SECRET_KEY)} <br />
-            <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
-          </p>
-        </div>
-      ))
-    }
-  </div>
+      {
+        messages?.filter((msg) => msg.pinned.isPinned).map((msg) => (
+          <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="pinned-message bg-zinc-100 mb-2">
+            <p>
+              <strong>Sender:</strong> {userMap[msg.sender]} <br />
+              <strong>Text:</strong> {decryptMessage(msg.text, GROUP_CHAT_SECRET_KEY)} <br />
+              <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
+            </p>
+          </div>
+        ))
+      }
+    </div>
   );
   const highlightText = (text, term) => {
     if (!term) return text;
@@ -139,12 +139,12 @@ const [open, setopen] = useState(false);
       )
     );
   };
-  const renderSearchResults = () => { 
+  const renderSearchResults = () => {
     if (searchResults.length === 0) {
       return <p>No results found</p>;
     }
     return searchResults?.map((result) => (
-      <div key={result._id} className="search-result hover:cursor-pointer bg-zinc-200"  onClick={()=>scrollToMessage(result._id)} >
+      <div key={result._id} className="search-result hover:cursor-pointer bg-zinc-200" onClick={() => scrollToMessage(result._id)} >
         <p>
           <strong>Sender:</strong> {userMap[result.sender]} <br />
           {console.log(result.text)}
@@ -154,11 +154,11 @@ const [open, setopen] = useState(false);
       </div>
     ));
   };
-  const searchResultsDiv=(
+  const searchResultsDiv = (
     <div className="search-results">
-    {searchTerm && 
-    renderSearchResults()}
-  </div>
+      {searchTerm &&
+        renderSearchResults()}
+    </div>
   );
   useEffect(() => {
     if (clickedGroupId) {
@@ -195,7 +195,7 @@ const [open, setopen] = useState(false);
       fetchMessages();
     }
   }, [clickedGroupId]);
- 
+
   const handleImageChange = (event) => {
     setImage(event.target.files[0]);
   };
@@ -208,13 +208,13 @@ const [open, setopen] = useState(false);
           if (entry.isIntersecting) {
             console.log(entry.isIntersecting);
             const messageId = entry.target.getAttribute('data-message-id');
-             console.log(messageId)
+            console.log(messageId)
             try {
               const senderId = entry.target.getAttribute('data-message-sender');
               console.log(senderId)
-              if ( senderId !== Authuser._id) {
-                 console.log('Reading message:', messageId);
-                 socket.emit('ReadMessageGroup', {messageId,senderId,readingUserId:userId});
+              if (senderId !== Authuser._id) {
+                console.log('Reading message:', messageId);
+                socket.emit('ReadMessageGroup', { messageId, senderId, readingUserId: userId });
               }
             } catch (err) {
               console.error('Error processing message read:', err);
@@ -231,20 +231,20 @@ const [open, setopen] = useState(false);
       observer.disconnect();
     };
   }, [messages]);
-  const handle1=async(data,index)=>{
+  const handle1 = async (data, index) => {
     // console.log(index);
-    socket.emit('deleteMessageForMeGroupUndo', data, userId,index);
+    socket.emit('deleteMessageForMeGroupUndo', data, userId, index);
   }
-  const handle2=async(data,text)=>{
-    socket.emit('DMEgroupUndo', data, userId,text);
+  const handle2 = async (data, text) => {
+    socket.emit('DMEgroupUndo', data, userId, text);
   }
   useEffect(() => {
     socket.on('receiveMessage', (messageData) => {
       // console.log('New message received:', messageData);
-    //  if(clickedGroupId===messageData.group){ 
+      //  if(clickedGroupId===messageData.group){ 
       setMessages((prevMessages) => [...prevMessages, messageData]);
-    //  }
-     setMessages((prevMessages) => prevMessages.map((msg) => msg._id === messageData._id ? messageData : msg));
+      //  }
+      setMessages((prevMessages) => prevMessages.map((msg) => msg._id === messageData._id ? messageData : msg));
     });
     socket.on('groupUpdated', (updatedGroup) => {
       console.log(updatedGroup);
@@ -252,23 +252,23 @@ const [open, setopen] = useState(false);
     })
     socket.on('typingGroup', (data) => {
       // console.log(data.sender,'from rightgroup.jsx typing .... ');
-    // if(data.group===clickedGroupId){
+      // if(data.group===clickedGroupId){
       setCurrentTypingUser(data.sender);
       // update UI to show that someone is typing
       setIsTyping(true);
-    // }
+      // }
     });
     socket.on('stopTypingGroup', (data) => {
       // if(data.group===clickedGroupId){
       setCurrentTypingUser(null);
       setIsTyping(false);
-    // }
+      // }
     });
-    socket.on('DMEGroupUpdated',(updatedMessage)=>{
+    socket.on('DMEGroupUpdated', (updatedMessage) => {
       console.log(updatedMessage);
       setMessages((prevMessages) => prevMessages.map((msg) => msg._id === updatedMessage._id ? updatedMessage : msg));
     })
-    socket.on('messageUpdatedUndo', (updatedMessage,index) => {
+    socket.on('messageUpdatedUndo', (updatedMessage, index) => {
       // setMessages((prevMessages) => [...prevMessages, updatedMessage])
       // console.log(index);
       setMessages((prevMessages) => {
@@ -277,15 +277,15 @@ const [open, setopen] = useState(false);
         return updated;
       });
     });
-    socket.on('messageDeletedForMe', (data,index) => {
+    socket.on('messageDeletedForMe', (data, index) => {
       // console.log(data);
       setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== data._id));
-     
-    data.sender=== Authuser._id &&  toast.success(
+
+      data.sender === Authuser._id && toast.success(
         <div>
           <p>DELETED FOR ME</p>
-          <button 
-            onClick={() => {     handle1(data,index);       }}  
+          <button
+            onClick={() => { handle1(data, index); }}
             style={{
               marginTop: '10px',
               padding: '5px 10px',
@@ -305,9 +305,9 @@ const [open, setopen] = useState(false);
       );
 
     }
-  );
+    );
     // Handling here the 'messageDeletedForEveryone' event to update the UI for all users
-    socket.on('messageDeletedForEveryone', (deletedMessage,text) => {
+    socket.on('messageDeletedForEveryone', (deletedMessage, text) => {
       if (deletedMessage.deletedForEveryone) {
         setMessages((prevMessages) => prevMessages.filter((msg) =>
           msg._id !== deletedMessage._id));
@@ -315,14 +315,14 @@ const [open, setopen] = useState(false);
       else {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE' ,flaggedForDeletion: true} : msg
+            msg._id === deletedMessage._id ? { ...msg, text: 'DELETED FOR EVERYONE', flaggedForDeletion: true } : msg
           )
         );
-      deletedMessage.sender=== Authuser._id &&   toast.success(
+        deletedMessage.sender === Authuser._id && toast.success(
           <div>
             <p>DELETED FOR EVERYONE</p>
-            <button 
-              onClick={() => { handle2(deletedMessage,text) }}  
+            <button
+              onClick={() => { handle2(deletedMessage, text) }}
               style={{
                 marginTop: '10px',
                 padding: '5px 10px',
@@ -375,19 +375,19 @@ const [open, setopen] = useState(false);
     };
   }, [socket]);
   // Handle sending new message
-  
- 
+
+
   const starredResultsDiv = (
     <div className="starred-results border border-gray-800 p-2">
       <h1 className='font-bold mb-3'>STARRED MESSAGES</h1>
       {messages
-        ?.filter(msg => 
+        ?.filter(msg =>
           Authuser?.starredMessages?.includes(msg._id) // Check if the message is starred and exists in starredMessages
         )
         .map(msg => (
           <div key={msg._id} onClick={() => scrollToMessage(msg._id)} className="starred-message bg-zinc-100 p-2 mb-2 rounded">
             <p>
-              <strong>Sender:</strong> {userMap[ msg.sender]} <br />
+              <strong>Sender:</strong> {userMap[msg.sender]} <br />
               <strong>Text:</strong> {decryptMessage(msg.text, GROUP_CHAT_SECRET_KEY)} <br />
               <strong>Sent At:</strong> {new Date(msg.sentAt).toLocaleString()} <br />
             </p>
@@ -414,15 +414,15 @@ const [open, setopen] = useState(false);
     }, 1000); // Stop typing after 1 second of inactivity
   };
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '' && !image) {return}
-  var url='';
-  if (image) {
-    const imageRef = ref(storage, `GroupImages/${image.name}`);
-    await uploadBytes(imageRef, image);
-    url = await getDownloadURL(imageRef);
-    console.log(url);
-    
-  }
+    if (newMessage.trim() === '' && !image) { return }
+    var url = '';
+    if (image) {
+      const imageRef = ref(storage, `GroupImages/${image.name}`);
+      await uploadBytes(imageRef, image);
+      url = await getDownloadURL(imageRef);
+      console.log(url);
+
+    }
     // console.log(currentGroupInfo)
     const messageData = {
       text: encryptMessage(newMessage, GROUP_CHAT_SECRET_KEY),
@@ -432,7 +432,7 @@ const [open, setopen] = useState(false);
       group: clickedGroupId,
       replyTo: replyingTo || null,
       sender: userId,
-      media:url ||"",
+      media: url || "",
     };
     // Emitting the message to the server
     socket.emit('sendMessageGroup', messageData, delay);
@@ -442,21 +442,21 @@ const [open, setopen] = useState(false);
   const scrollToMessage = (messageId) => {
     // Find the index of the message with the given messageId
     const index = messages.findIndex((msg) => msg._id === messageId);
-    
+
     // If the index is found and a corresponding reference exists
     if (index !== -1 && messageRefs.current[index]) {
       messageRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-  
+
       // Optionally, add a visual highlight to indicate focus
       messageRefs.current[index].classList.add('highlight');
       setTimeout(() => {
         messageRefs.current[index].classList.remove('highlight');
       }, 2000); // Remove the highlight after 2 seconds
     }
-  }; 
- 
+  };
+
   const handleSearch = async (input) => {
-    const conversationId='671a2875ad18f8647ebc541b';
+    const conversationId = '671a2875ad18f8647ebc541b';
 
     try {
       const response = await fetch("http://localhost:5000/group/search/", {
@@ -466,225 +466,228 @@ const [open, setopen] = useState(false);
         },
         body: JSON.stringify({ conversationId, searchTerm: input }),
       });
-      
+
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
       console.error("Error searching messages:", error);
     }
-  };  
+  };
   return (
-  //  <div className='flex gap-3 min-w-[780px]'>
+    //  <div className='flex gap-3 min-w-[780px]'>
     <div className='bg-white h-full min-w-[760px] shadow-xl shadow-green-300
-    rounded-3xl  mr-[300px]   flex ' style={{backgroundImage: `url(${wallpaper})`,
-     marginLeft:`${(showMessageInfo!==null || showPinnedMessages || showStarredMessages|| searchBar ||showAI!==null )  ? '-80px' : '150px' }`}}>
+    rounded-3xl  mr-[300px]   flex ' style={{
+        backgroundImage: `url(${wallpaper})`,
+        marginLeft: `${(showMessageInfo !== null || showPinnedMessages || showStarredMessages || searchBar || showAI !== null) ? '-80px' : '150px'}`
+      }}>
       <div className='min-w-[760px]'>
-      {/* Group Info */}
-      {currentGroupInfo ? (
-        <div className="p-4 border border-blue-500 rounded-br-3xl rounded-tr-3xl  bg-yellow-400">
-          <h2>{currentGroupInfo.name}</h2>
-         <div className='flex gap-3 justify-evenly mt-3'>
-         { searchBar &&  
-            <div className="search-bar flex flex-col">
-  <input
-    type="text"
-    placeholder="Search messages..."
-    value={searchTerm}
-    onChange={(e) =>{ setSearchTerm(e.target.value); 
-      handleSearch(e.target.value);
-     }}
-  />
-  <button onClick={() => {handleSearch(searchTerm)}}>Search</button>
-</div>}
-      <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
-            } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}
-            IsGroupInfo={true} groupId= {currentGroupInfo._id} />
-          <div>
-            {currentGroupInfo.participants.map((participant, index) => (
-              <span className="bg-zinc-200 p-2 " key={index}>
-                {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
-                {index < currentGroupInfo.participants.length - 1 ? ', ' : ''}
-              </span>
+        {/* Group Info */}
+        {currentGroupInfo ? (
+          <div className="p-4 border border-blue-500 rounded-br-3xl rounded-tr-3xl  bg-yellow-400">
+            <h2>{currentGroupInfo.name}</h2>
+            <div className='flex gap-3 justify-evenly mt-3'>
+              {searchBar &&
+                <div className="search-bar flex flex-col">
+                  <input
+                    type="text"
+                    placeholder="Search messages..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      handleSearch(e.target.value);
+                    }}
+                  />
+                  <button onClick={() => { handleSearch(searchTerm) }}>Search</button>
+                </div>}
+              <DotsMenu setShowStarredMessages={setShowStarredMessages} setShowPinnedMessages={setShowPinnedMessages
+              } showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} searchBar={searchBar} setSearchBar={setSearchBar}
+                IsGroupInfo={true} groupId={currentGroupInfo._id} />
+              <div>
+                {currentGroupInfo.participants.map((participant, index) => (
+                  <span className="bg-zinc-200 p-2 " key={index}>
+                    {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
+                    {index < currentGroupInfo.participants.length - 1 ? ', ' : ''}
+                  </span>
 
-               ))
-              }
-              { <img src={info} width={30} onClick={()=>{openInfoModal()}} alt="" /> }
-            {isTyping && <p className=' mt-2 text-green-800'>{userMap[currentTypingUser]} is typing...</p>}
-          </div>
-</div> 
-        </div>
-      ) : (
-        ""
-      )}
-
-      {/* Message Container */}
-      <div ref={chatContainerRef}  className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: '400px' }}>
-        { loading  ? (
-          clickedGroupId &&
-          <p>Loading messages...
-
-          </p>
-        ) : messages.length === 0 && clickedGroupId ? (
-          <div>No messages found in this group.
-
+                ))
+                }
+                {<img src={info} width={30} onClick={() => { openInfoModal() }} alt="" />}
+                {isTyping && <p className=' mt-2 text-green-800'>{userMap[currentTypingUser]} is typing...</p>}
+              </div>
+            </div>
           </div>
         ) : (
-          messages.map((msg, index) => (
-            <GroupMessage ref={(el) => (messageRefs.current[index] = el)} onClick={() => console.log(msg._id, " from rightour")} key={index} message={msg}
-            setMessages={setMessages} messages={messages} userId={userId} replyingTo={replyingTo} setReplyingTo={setReplyingTo}
-            messageRefs={messageRefs} setShowMessageInfo={setShowMessageInfo} showMessageInfo={showMessageInfo}
-            showAI={showAI} setShowAI={setShowAI}
-            dataMessageId={msg._id}  
-            dataMessageSender={msg.group}
-            groups={groups}
-            />
-          ))
+          ""
         )}
-      </div>
-      <div className="p-4 border-t flex flex-col mt-10">
-        {replyingTo && (
-          <div className="reply-preview h-[20%] w-[100%]  bg-green-500 border border-black border-y-8 font-bold ">
-            <p>Replying to: {decryptMessage(messages.find((msg) => msg._id === replyingTo)?.text,GROUP_CHAT_SECRET_KEY)}</p>
-            <button className='hover:cursor-pointer' onClick={cancelReply}>Cancel</button>
-          </div>
-        )}
-          {isScrolledUp && (
-             <>
-            <span className='scroll-to-bottom-button1'>{unreadCount}</span> 
-        <button
-        className="scroll-to-bottom-button"
-        onClick={scrollToBottom}
-        >
-        <img src={scrolldown} height={20} width={20} alt="" />
-      </button>
-        </> 
-    )}
-       {clickedGroupId ? (
-  <>
-    {currentGroupInfo?.participants?.includes(userId) ? ( 
-      // Replace `authUserId` with the variable that holds the current authenticated user's ID
-      <>
-       <input
-  type="file"
-  onChange={handleImageChange}
-  accept="image/*,audio/mp3,video/mp4,application/pdf"
-/>
 
-        <TextField
-          label="Type your message..."
-          fullWidth
-          value={newMessage}
-          onChange={(e) => {
-            setNewMessage(e.target.value);
-            handleTyping();
-          }}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              handleSendMessage();
-            }
-          }}
-        />
-        <Button onClick={handleSendMessage} variant="contained" color="primary">
-           Send
-        </Button>
-        <ScheduleSend setDelay={setDelay} />
-      </>
-    ) : (
-      <p>You are not a participant of this group.You cant send messages any longer. </p>
-    )}
-  </>
-) : (
-  !clickedGroupId && 
-  (<>
-  <img src={a2} className='m-auto mt-[50px]' alt="" />  
-  <div className='text-3xl text-gray-500'>CLICK TO BEGIN CHATTING</div>
-  </>)
+        {/* Message Container */}
+        <div ref={chatContainerRef} className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: '400px' }}>
+          {loading ? (
+            clickedGroupId &&
+            <p>Loading messages...
 
-)}
+            </p>
+          ) : messages.length === 0 && clickedGroupId ? (
+            <div>No messages found in this group.
 
-        <Dialog open={showModal} onClose={closeInfoModal}>
-          <DialogTitle>GROUP INFO</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              {currentGroupInfo ? currentGroupInfo.name : "No Group Selected"}
-            </DialogContentText>
-            {currentGroupInfo?.description ? `Description: ${currentGroupInfo.description}` :
-              <>
-                NO DESCRIPTION
-                <button className='hover:cursor-pointer bg-green-500 ml-2'>ADD + </button>
-              </>
-            }
-            {
-              <div>
-{          <button className='mr-2' onClick={handleClickOpen}>ADD MEMBERS</button>
-}                {new Date(currentGroupInfo?.createdAt).toLocaleDateString()}
-              </div>
-            }
-          </DialogContent>
-          <div>
-            {currentGroupInfo?.participants?.map((participant, index) => (
-              <li className="bg-zinc-200 p-2 flex flex-col gap-3 " key={index}>
-                <p className='flex gap-2'>
-                  {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
-                  {currentGroupInfo.admins.includes(participant) ? <><span className='text-green-800'>Admin</span></> : <><span className='text-red-800'>Member</span></>}
-                    {participant!==userId && <button onClick={()=>{socket.emit('removeMembers',{groupId:currentGroupInfo._id,participants:participant,conversationId:currentGroupInfo.conversationId})}}>remove</button> }
-                  {!currentGroupInfo.admins.includes(participant) && <button onClick={()=>{socket.emit('makeAdmin',{groupId:currentGroupInfo._id,participants:[participant]})}}>make admin</button> }
-                 {participant!==userId &&  currentGroupInfo.admins.includes(participant) && <button onClick={()=>{socket.emit('removeAdmin',{groupId:currentGroupInfo._id,participants:participant});console.log(participant)}}>remove admin</button> }
-                </p>
-              </li>
-
+            </div>
+          ) : (
+            messages.map((msg, index) => (
+              <GroupMessage ref={(el) => (messageRefs.current[index] = el)} onClick={() => console.log(msg._id, " from rightour")} key={index} message={msg}
+                setMessages={setMessages} messages={messages} userId={userId} replyingTo={replyingTo} setReplyingTo={setReplyingTo}
+                messageRefs={messageRefs} setShowMessageInfo={setShowMessageInfo} showMessageInfo={showMessageInfo}
+                showAI={showAI} setShowAI={setShowAI}
+                dataMessageId={msg._id}
+                dataMessageSender={msg.group}
+                groups={groups}
+              />
             ))
-            }
-          </div>
-          <DialogActions>
-            <Button onClick={()=>{socket.emit('removeMembers',{groupId:currentGroupInfo._id,participants:userId,conversationId:currentGroupInfo.conversationId});closeInfoModal()}}  className='hover:cursor-pointer bg-red-500' variant="contained">
-              LEAVE GROUP
-            </Button>
-            <Button onClick={closeInfoModal} color="default">
-              Cancel
-            </Button>
-            {currentGroupInfo?.admins?.includes(userId) && <Button disabled onClick={()=>{socket.emit('deleteGroup',currentGroupInfo._id);closeInfoModal()}}>
-             DELETE GROUP
-            </Button>}
-          </DialogActions>
-        </Dialog> 
+          )}
+        </div>
+        <div className="p-4 border-t flex flex-col mt-10">
+          {replyingTo && (
+            <div className="reply-preview h-[20%] w-[100%]  bg-green-500 border border-black border-y-8 font-bold ">
+              <p>Replying to: {decryptMessage(messages.find((msg) => msg._id === replyingTo)?.text, GROUP_CHAT_SECRET_KEY)}</p>
+              <button className='hover:cursor-pointer' onClick={cancelReply}>Cancel</button>
+            </div>
+          )}
+          {isScrolledUp && (
+            <>
+              <span className='scroll-to-bottom-button1'>{unreadCount}</span>
+              <button
+                className="scroll-to-bottom-button"
+                onClick={scrollToBottom}
+              >
+                <img src={scrolldown} height={20} width={20} alt="" />
+              </button>
+            </>
+          )}
+          {clickedGroupId ? (
+            <>
+              {currentGroupInfo?.participants?.includes(userId) ? (
+                // Replace `authUserId` with the variable that holds the current authenticated user's ID
+                <>
+                  <input
+                    type="file"
+                    onChange={handleImageChange}
+                    accept="image/*,audio/mp3,video/mp4,application/pdf"
+                  />
 
-        <Dialog open={open} onClose={handleClose}>
-          
+                  <TextField
+                    label="Type your message..."
+                    fullWidth
+                    value={newMessage}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      handleTyping();
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button onClick={handleSendMessage} variant="contained" color="primary">
+                    Send
+                  </Button>
+                  <ScheduleSend setDelay={setDelay} />
+                </>
+              ) : (
+                <p>You are not a participant of this group.You cant send messages any longer. </p>
+              )}
+            </>
+          ) : (
+            !clickedGroupId &&
+            (<>
+              <img src={a2} className='m-auto mt-[50px]' alt="" />
+              <div className='text-3xl text-gray-500'>CLICK TO BEGIN CHATTING</div>
+            </>)
+
+          )}
+
+          <Dialog open={showModal} onClose={closeInfoModal}>
+            <DialogTitle>GROUP INFO</DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                {currentGroupInfo ? currentGroupInfo.name : "No Group Selected"}
+              </DialogContentText>
+              {currentGroupInfo?.description ? `Description: ${currentGroupInfo.description}` :
+                <>
+                  NO DESCRIPTION
+                  <button className='hover:cursor-pointer bg-green-500 ml-2'>ADD + </button>
+                </>
+              }
+              {
+                <div>
+                  {<button className='mr-2' onClick={handleClickOpen}>ADD MEMBERS</button>
+                  }                {new Date(currentGroupInfo?.createdAt).toLocaleDateString()}
+                </div>
+              }
+            </DialogContent>
+            <div>
+              {currentGroupInfo?.participants?.map((participant, index) => (
+                <li className="bg-zinc-200 p-2 flex flex-col gap-3 " key={index}>
+                  <p className='flex gap-2'>
+                    {participant === userId ? `You(${userMap[participant]})` : userMap[participant]}
+                    {currentGroupInfo.admins.includes(participant) ? <><span className='text-green-800'>Admin</span></> : <><span className='text-red-800'>Member</span></>}
+                    {participant !== userId && <button onClick={() => { socket.emit('removeMembers', { groupId: currentGroupInfo._id, participants: participant, conversationId: currentGroupInfo.conversationId }) }}>remove</button>}
+                    {!currentGroupInfo.admins.includes(participant) && <button onClick={() => { socket.emit('makeAdmin', { groupId: currentGroupInfo._id, participants: [participant] }) }}>make admin</button>}
+                    {participant !== userId && currentGroupInfo.admins.includes(participant) && <button onClick={() => { socket.emit('removeAdmin', { groupId: currentGroupInfo._id, participants: participant }); console.log(participant) }}>remove admin</button>}
+                  </p>
+                </li>
+
+              ))
+              }
+            </div>
+            <DialogActions>
+              <Button onClick={() => { socket.emit('removeMembers', { groupId: currentGroupInfo._id, participants: userId, conversationId: currentGroupInfo.conversationId }); closeInfoModal() }} className='hover:cursor-pointer bg-red-500' variant="contained">
+                LEAVE GROUP
+              </Button>
+              <Button onClick={closeInfoModal} color="default">
+                Cancel
+              </Button>
+              {currentGroupInfo?.admins?.includes(userId) && <Button disabled onClick={() => { socket.emit('deleteGroup', currentGroupInfo._id); closeInfoModal() }}>
+                DELETE GROUP
+              </Button>}
+            </DialogActions>
+          </Dialog>
+
+          <Dialog open={open} onClose={handleClose}>
+
             <h4>Select Participants:</h4>
             {
-            //  console.log(allUsers.filter((user) => user._id !== userId))
-            users.filter((user) => user._id !== userId && !currentGroupInfo?.participants?.includes(user._id)).map(user => (
-              <ListItem key={user._id} button onClick={() => handleToggleParticipant(user._id)}>
-                <ListItemIcon>
-                  <Checkbox
-                    edge="start"
-                    checked={selectedParticipants.includes(user.id)}
-                    tabIndex={-1}
-                    disableRipple
-                  />
-                </ListItemIcon>
-                <ListItemText primary={user.username || user.email} />
-              </ListItem>
-            ))}
-          <DialogActions>
-            <Button onClick={()=>{socket.emit('addMembers', { groupId: clickedGroupId, participants: selectedParticipants,conversationId:currentGroupInfo.conversationId });handleClose()}} color="secondary">ADD MEMBER(S)</Button>
-            {/* <Button onClick={handleCreateGroup} color="primary">Create Group</Button> */}
-          </DialogActions>
-        </Dialog>
-      </div>
+              //  console.log(allUsers.filter((user) => user._id !== userId))
+              users.filter((user) => user._id !== userId && !currentGroupInfo?.participants?.includes(user._id)).map(user => (
+                <ListItem key={user._id} button onClick={() => handleToggleParticipant(user._id)}>
+                  <ListItemIcon>
+                    <Checkbox
+                      edge="start"
+                      checked={selectedParticipants.includes(user.id)}
+                      tabIndex={-1}
+                      disableRipple
+                    />
+                  </ListItemIcon>
+                  <ListItemText primary={user.username || user.email} />
+                </ListItem>
+              ))}
+            <DialogActions>
+              <Button onClick={() => { socket.emit('addMembers', { groupId: clickedGroupId, participants: selectedParticipants, conversationId: currentGroupInfo.conversationId }); handleClose() }} color="secondary">ADD MEMBER(S)</Button>
+              {/* <Button onClick={handleCreateGroup} color="primary">Create Group</Button> */}
+            </DialogActions>
+          </Dialog>
+        </div>
       </div>
       {
-        (showPinnedMessages || showStarredMessages || showMessageInfo!==null || searchTerm!==''|| showAI!==null) && 
-        <MessageInfo showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} showMessageInfo={showMessageInfo} searchTerm={searchTerm} 
-        setShowPinnedMessages={setShowPinnedMessages} setShowStarredMessages={setShowStarredMessages} setShowMessageInfo={setShowMessageInfo} setSearchTerm={setSearchTerm}
-        IsGroupInfo={true}  showAI={showAI} setShowAI={setShowAI}
-        searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages}
+        (showPinnedMessages || showStarredMessages || showMessageInfo !== null || searchTerm !== '' || showAI !== null) &&
+        <MessageInfo showPinnedMessages={showPinnedMessages} showStarredMessages={showStarredMessages} showMessageInfo={showMessageInfo} searchTerm={searchTerm}
+          setShowPinnedMessages={setShowPinnedMessages} setShowStarredMessages={setShowStarredMessages} setShowMessageInfo={setShowMessageInfo} setSearchTerm={setSearchTerm}
+          IsGroupInfo={true} showAI={showAI} setShowAI={setShowAI}
+          searchResultsDiv={searchResultsDiv} pinnedResultsDiv={pinnedResultsDiv} starredResultsDiv={starredResultsDiv} messages2={messages}
         />
       }
 
     </div>
-      // </div> 
+    // </div> 
   );
 };
 

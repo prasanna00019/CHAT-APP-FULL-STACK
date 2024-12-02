@@ -22,10 +22,10 @@ const RightStory = () => {
   const [ClickLike, setClickLike] = useState(false);
   const [progress, setProgress] = useState(0);
   const { socket } = useContext(SocketContext);
-  const { Authuser ,userMap} = useAuthContext();
-  const displayDuration = 3000; 
-  const {GROUP_CHAT_SECRET_KEY}=useLogout()
-  const [viewers, setViewers] = useState([]); 
+  const { Authuser, userMap } = useAuthContext();
+  const displayDuration = 3000;
+  const { GROUP_CHAT_SECRET_KEY } = useLogout()
+  const [viewers, setViewers] = useState([]);
   const [NumLikes, setNumLikes] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const fetchViewers = async (storyId) => {
@@ -69,7 +69,7 @@ const RightStory = () => {
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
       const currentStoryId = stories[currentStoryIndex]._id;
-      fetchViewers(currentStoryId); 
+      fetchViewers(currentStoryId);
     }
   }, [clickedUserId, currentStoryIndex, stories]);
   const updateViewCount = (storyId, userId) => {
@@ -82,13 +82,13 @@ const RightStory = () => {
   useEffect(() => {
     socket.on('newStory', (data) => {
       if (data.story.visibility.includes(Authuser._id)) {
-          toast.success(`NEW STORY ADDED`, {
-            style: {
-              borderRadius: '10px',
-              background: '#333',
-              color: '#fff',
-            },
-          })   
+        toast.success(`NEW STORY ADDED`, {
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        })
       }
       else {
         toast.error('sorry you are not in the story !!! ', {
@@ -160,12 +160,12 @@ const RightStory = () => {
     if (!storyId) return;
     socket.emit('likeStory', { storyId, userId: Authuser._id });
     setClickLike(!ClickLike); // toggle the like state
-   if(ClickLike){ 
-   setNumLikes((prevNumLikes) => prevNumLikes + 1);
-  }
-  else{
-    setNumLikes((prevNumLikes) => prevNumLikes - 1);
-  }
+    if (ClickLike) {
+      setNumLikes((prevNumLikes) => prevNumLikes + 1);
+    }
+    else {
+      setNumLikes((prevNumLikes) => prevNumLikes - 1);
+    }
   };
   useEffect(() => {
     if (clickedUserId && stories.length > 0) {
@@ -293,7 +293,7 @@ const RightStory = () => {
           label="Type your message..."
           fullWidth
           value={newMessage}
-          onFocus={() => {setIsPaused(true);socket.emit('register', Authuser._id);}} 
+          onFocus={() => { setIsPaused(true); socket.emit('register', Authuser._id); }}
           onBlur={() => setIsPaused(false)} // Set paused to false on blur
 
           onChange={(e) => { setNewMessage(e.target.value); }}
@@ -302,18 +302,18 @@ const RightStory = () => {
               handleSendMessage();
             }
           }}
-          />
-             <Button onClick={handleSendMessage} variant="contained" color="primary">
+        />
+        <Button onClick={handleSendMessage} variant="contained" color="primary">
           Send
-        </Button> 
+        </Button>
         <div>{
-  currentStory.media && <img src={currentStory.media} width={300} height={300} alt="" />}</div>
+          currentStory.media && <img src={currentStory.media} width={300} height={300} alt="" />}</div>
         <div className="flex items-center gap-4">
           {/* {console.log(currentStory.likes)} */}
           {
-  !NumLikes ? <img src={emptyLike} onClick={handleLikeStory} alt="Like" width={20} height={20} /> :
-    <img src={GreenHeart} onClick={handleLikeStory} alt="Like" width={20} height={20} />
-}
+            !NumLikes ? <img src={emptyLike} onClick={handleLikeStory} alt="Like" width={20} height={20} /> :
+              <img src={GreenHeart} onClick={handleLikeStory} alt="Like" width={20} height={20} />
+          }
           {/* <img onClick={()=>{handleLikeStory(); setClickLike(!ClickLike) }} src={ClickLike ? GreenHeart : emptyLike} alt="Like" width={20} height={20} /> */}
 
           <span>{NumLikes} Likes</span>        </div>
