@@ -34,13 +34,13 @@ A feature-rich, full-stack chat application using **MERN** stack offering seamle
 
 ## Chat App Images
 > ## Home page 
-![Logo](https://firebasestorage.googleapis.com/v0/b/code-execution-engine.appspot.com/o/Screenshot%202024-11-24%20193155.png?alt=media&token=cb1a97fb-74f5-48eb-8e92-6fb67a9db616)
+![Logo](https://github.com/prasanna00019/CHAT-APP-FULL-STACK/blob/main/frontend/src/assets/Screenshot%202024-11-24%20193155.png)
 
 > ## One to One chats 
-![Logo](https://firebasestorage.googleapis.com/v0/b/code-execution-engine.appspot.com/o/Screenshot%202024-11-24%20193254.png?alt=media&token=460a0a51-afd6-4d28-97a2-51c9b8c2b6f8)
+![Logo](https://github.com/prasanna00019/CHAT-APP-FULL-STACK/blob/main/frontend/src/assets/Screenshot%202024-11-24%20193254.png)
 
 > ## Trending Feature in Your Groups 
-![Logo](https://firebasestorage.googleapis.com/v0/b/code-execution-engine.appspot.com/o/trending-groups.jpg?alt=media&token=bf6c3758-7047-4748-ae3f-d3ce9af36111)
+![Logo](https://github.com/prasanna00019/CHAT-APP-FULL-STACK/blob/main/frontend/src/assets/trending-groups.jpg)
 
 [UNDO DELETE FOR ME , DELETE FOR EVERYONE VIDEO](https://firebasestorage.googleapis.com/v0/b/code-execution-engine.appspot.com/o/delete-undo.mp4?alt=media&token=f9c69c09-a996-4c5b-9d24-a123cdb25a6f)
 
